@@ -1,0 +1,11 @@
+src/**
+.vscode/**
+.gitignore
+tsconfig.json
+tsconfig.test.json
+eslint.config.mjs
+test/**
+out-test/**
+node_modules/**
+*.vsix
+assets/icon-source-*.png

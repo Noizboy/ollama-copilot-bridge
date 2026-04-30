@@ -1,0 +1,131 @@
+{
+  "name": "ollama-copilot-bridge",
+  "displayName": "Ollama Copilot Bridge",
+  "description": "Use Ollama Cloud models in VS Code chat through a VS Code language model provider.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Machine Learning",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:ollamaCopilot.manage",
+    "onCommand:ollamaCopilot.setApiKey",
+    "onCommand:ollamaCopilot.clearApiKey",
+    "onCommand:ollamaCopilot.refreshModels",
+    "onCommand:ollamaCopilot.testConnection"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "ollama-bridge",
+        "displayName": "Ollama Bridge",
+        "managementCommand": "ollamaCopilot.manage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ollamaCopilot.manage",
+        "title": "Ollama Copilot: Manage"
+      },
+      {
+        "command": "ollamaCopilot.setApiKey",
+        "title": "Ollama Copilot: Set API Key"
+      },
+      {
+        "command": "ollamaCopilot.clearApiKey",
+        "title": "Ollama Copilot: Clear API Key"
+      },
+      {
+        "command": "ollamaCopilot.refreshModels",
+        "title": "Ollama Copilot: Refresh Models"
+      },
+      {
+        "command": "ollamaCopilot.testConnection",
+        "title": "Ollama Copilot: Test Connection"
+      }
+    ],
+    "configuration": {
+      "title": "Ollama Copilot Bridge",
+      "properties": {
+        "ollamaCopilot.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Ollama language model provider."
+        },
+        "ollamaCopilot.baseUrl": {
+          "type": "string",
+          "default": "https://ollama.com",
+          "description": "Base URL for Ollama Cloud or an Ollama-compatible service. Use http://localhost:11434 only if you want local Ollama."
+        },
+        "ollamaCopilot.openaiCompatiblePath": {
+          "type": "string",
+          "default": "/v1",
+          "description": "OpenAI-compatible path exposed by Ollama."
+        },
+        "ollamaCopilot.defaultModel": {
+          "type": "string",
+          "default": "gpt-oss:20b",
+          "description": "Fallback model ID used only when a local bridge request does not provide a model or model discovery fails."
+        },
+        "ollamaCopilot.maxInputTokens": {
+          "type": "number",
+          "default": 8192,
+          "minimum": 1024,
+          "description": "Default max input tokens reported for Ollama models."
+        },
+        "ollamaCopilot.maxOutputTokens": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 128,
+          "description": "Default max output tokens reported for Ollama models."
+        },
+        "ollamaCopilot.requestTimeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 1000,
+          "description": "Timeout for requests sent to Ollama."
+        },
+        "ollamaCopilot.retryMaxAttempts": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Maximum attempts for retryable Ollama Cloud errors such as 429, 503, and 504."
+        },
+        "ollamaCopilot.retryBaseDelayMs": {
+          "type": "number",
+          "default": 1500,
+          "minimum": 250,
+          "maximum": 30000,
+          "description": "Base delay used for exponential backoff between retry attempts."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('out',{recursive:true,force:true}); fs.rmSync('out-test',{recursive:true,force:true});\"",
+    "compile": "npm run clean && tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js",
+    "package": "npm run compile && vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.104.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.0",
+    "@typescript-eslint/parser": "^8.31.0",
+    "@vscode/vsce": "^3.3.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
+  }
+}
