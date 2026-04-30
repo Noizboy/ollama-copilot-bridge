@@ -49,14 +49,14 @@ async function manageBridge(
   const selected = await vscode.window.showQuickPick(
     [
       {
-        label: "$(plug) Test Connection",
-        detail: config.baseUrl,
-        action: "test"
-      },
-      {
         label: "$(key) Set API Key",
         detail: "Stored securely with VS Code SecretStorage",
         action: "setApiKey"
+      },
+      {
+        label: "$(plug) Test Connection",
+        detail: config.baseUrl,
+        action: "test"
       },
       {
         label: "$(trash) Clear API Key",

@@ -18,9 +18,9 @@
     "onStartupFinished",
     "onCommand:ollamaCopilot.manage",
     "onCommand:ollamaCopilot.setApiKey",
+    "onCommand:ollamaCopilot.testConnection",
     "onCommand:ollamaCopilot.clearApiKey",
-    "onCommand:ollamaCopilot.refreshModels",
-    "onCommand:ollamaCopilot.testConnection"
+    "onCommand:ollamaCopilot.refreshModels"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -41,16 +41,16 @@
         "title": "Ollama Copilot: Set API Key"
       },
       {
+        "command": "ollamaCopilot.testConnection",
+        "title": "Ollama Copilot: Test Connection"
+      },
+      {
         "command": "ollamaCopilot.clearApiKey",
         "title": "Ollama Copilot: Clear API Key"
       },
       {
         "command": "ollamaCopilot.refreshModels",
         "title": "Ollama Copilot: Refresh Models"
-      },
-      {
-        "command": "ollamaCopilot.testConnection",
-        "title": "Ollama Copilot: Test Connection"
       }
     ],
     "configuration": {
