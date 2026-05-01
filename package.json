@@ -2,7 +2,7 @@
   "name": "ollama-copilot-bridge",
   "displayName": "Ollama Copilot Bridge",
   "description": "Use Ollama Cloud models in VS Code chat through a VS Code language model provider.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "local",
   "license": "MIT",
   "icon": "assets/icon.png",
@@ -116,7 +116,7 @@
     "compile": "npm run clean && tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js out-test/test/openAiStream.test.js",
+    "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js out-test/test/openAiStream.test.js out-test/test/contextUsage.test.js",
     "package": "npm run compile && vsce package --allow-missing-repository"
   },
   "devDependencies": {

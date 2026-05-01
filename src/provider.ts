@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getBridgeConfig } from "./config";
+import { buildContextUsageSnapshot, type ContextUsageSnapshot } from "./contextUsage";
 import type { OllamaClient } from "./ollamaClient";
 import type { ChatCompletionPayload, OllamaModel, OpenAiMessage, OpenAiRole, OpenAiToolCall } from "./types";
 
@@ -9,9 +10,11 @@ type ChatInfo = vscode.LanguageModelChatInformation & {
 
 export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProvider<ChatInfo> {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
+  private readonly contextUsageEmitter = new vscode.EventEmitter<ContextUsageSnapshot>();
   private cachedModels: ChatInfo[] | undefined;
 
   public readonly onDidChangeLanguageModelChatInformation = this.changeEmitter.event;
+  public readonly onDidUpdateContextUsage = this.contextUsageEmitter.event;
 
   public constructor(
     private readonly client: OllamaClient,
@@ -79,6 +82,20 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken
   ): Promise<void> {
+    const inputText = messages.map((message) => messageContentToText(message.content)).join("\n");
+    let outputText = "";
+
+    this.contextUsageEmitter.fire(
+      buildContextUsageSnapshot({
+        modelId: model.id,
+        modelName: model.name,
+        maxInputTokens: model.maxInputTokens,
+        maxOutputTokens: model.maxOutputTokens,
+        requestMultiplier: model.requestMultiplier,
+        inputText
+      })
+    );
+
     const payload: ChatCompletionPayload = {
       ...filterModelOptions(options.modelOptions),
       model: model.id,
@@ -91,6 +108,7 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
       payload,
       (part) => {
         if (part.type === "text") {
+          outputText += part.value;
           progress.report(new vscode.LanguageModelTextPart(part.value));
           return;
         }
@@ -100,6 +118,18 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
         );
       },
       token
+    );
+
+    this.contextUsageEmitter.fire(
+      buildContextUsageSnapshot({
+        modelId: model.id,
+        modelName: model.name,
+        maxInputTokens: model.maxInputTokens,
+        maxOutputTokens: model.maxOutputTokens,
+        requestMultiplier: model.requestMultiplier,
+        inputText,
+        outputText
+      })
     );
   }
 

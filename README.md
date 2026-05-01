@@ -8,6 +8,7 @@ Extension MVP for using Ollama Cloud models from VS Code chat through the offici
 - Connects to Ollama Cloud at `https://ollama.com/v1` by default.
 - Stores your Ollama Cloud API key securely with VS Code SecretStorage.
 - Streams chat responses from Ollama Cloud into VS Code chat.
+- Shows last-request context usage when hovering the **Ollama Bridge** status bar button.
 - Can also be pointed at local Ollama by changing `ollamaCopilot.baseUrl` to `http://localhost:11434`.
 
 ## Commands
@@ -39,6 +40,18 @@ The bridge enriches models automatically with `POST /api/show`:
 - Context size comes from `*.context_length` in `model_info`, with `num_ctx` fallback.
 - Capabilities come from Ollama's `capabilities` array.
 - Request multiplier is read if the provider returns one; otherwise it is estimated from `general.parameter_count`.
+
+## Context Usage Hover
+
+Hover the **Ollama Bridge** status bar button after sending a chat request to see:
+
+- input context used versus the model context window
+- estimated response tokens
+- total estimated tokens for the last request
+- max output tokens
+- request multiplier
+
+This is a bridge-owned estimate based on the last request handled by the extension. The internal Copilot context indicator is controlled by VS Code/Copilot.
 
 ## Agent Mode And Tool Calling
 

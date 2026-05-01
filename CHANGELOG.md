@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.3
+
+- Added a status bar hover with last-request context usage for Ollama Bridge models.
+- Added context usage helpers and unit tests.
+- Documented the bridge-owned context usage estimate.
+
 ## 0.0.2
 
 - Added OpenAI-compatible tool call streaming support for VS Code Agent mode.

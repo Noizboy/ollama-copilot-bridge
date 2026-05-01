@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { affectsBridgeConfig, getBridgeConfig } from "./config";
+import { formatTokenCount, type ContextUsageSnapshot } from "./contextUsage";
 import { OllamaClient } from "./ollamaClient";
 import { OllamaLanguageModelProvider } from "./provider";
 import { SecretStore } from "./secrets";
@@ -13,7 +14,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   status.command = "ollamaCopilot.manage";
   status.text = "$(cloud) Ollama Bridge";
-  status.tooltip = "Manage Ollama Copilot Bridge";
+  status.tooltip = buildIdleStatusTooltip();
   status.show();
 
   context.subscriptions.push(
@@ -28,6 +29,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("ollamaCopilot.clearApiKey", () => clearApiKey(secrets)),
     vscode.commands.registerCommand("ollamaCopilot.refreshModels", () => refreshModels(client, provider)),
     vscode.commands.registerCommand("ollamaCopilot.testConnection", () => testConnection(client)),
+    provider.onDidUpdateContextUsage((snapshot) => {
+      status.tooltip = buildContextStatusTooltip(snapshot);
+    }),
     vscode.workspace.onDidChangeConfiguration(async (event) => {
       if (!affectsBridgeConfig(event)) {
         return;
@@ -157,4 +161,42 @@ async function warnIfCloudKeyIsMissing(client: OllamaClient): Promise<void> {
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function buildIdleStatusTooltip(): vscode.MarkdownString {
+  const tooltip = new vscode.MarkdownString(undefined, true);
+  tooltip.supportHtml = false;
+  tooltip.appendMarkdown("**Ollama Copilot Bridge**\n\n");
+  tooltip.appendMarkdown("No chat request has been tracked yet.\n\n");
+  tooltip.appendMarkdown("Use an Ollama Bridge model in Copilot Chat to see context usage here.");
+  return tooltip;
+}
+
+function buildContextStatusTooltip(snapshot: ContextUsageSnapshot): vscode.MarkdownString {
+  const tooltip = new vscode.MarkdownString(undefined, true);
+  const used = formatTokenCount(snapshot.inputTokens);
+  const limit = formatTokenCount(snapshot.maxInputTokens);
+  const output = formatTokenCount(snapshot.outputTokens);
+  const total = formatTokenCount(snapshot.totalTokens);
+  const updatedAt = snapshot.updatedAt.toLocaleTimeString();
+
+  tooltip.supportHtml = false;
+  tooltip.appendMarkdown(`**Ollama Bridge: ${snapshot.modelName}**\n\n`);
+  tooltip.appendMarkdown(`Context Window\n\n${renderUsageBar(snapshot.inputPercent)} **${snapshot.inputPercent}% used**\n\n`);
+  tooltip.appendMarkdown(`| Metric | Value |\n| --- | ---: |\n`);
+  tooltip.appendMarkdown(`| Input context | ${used} / ${limit} |\n`);
+  tooltip.appendMarkdown(`| Response estimate | ${output} |\n`);
+  tooltip.appendMarkdown(`| Last request total | ${total} |\n`);
+  tooltip.appendMarkdown(`| Max output | ${formatTokenCount(snapshot.maxOutputTokens)} |\n`);
+  tooltip.appendMarkdown(`| Request multiplier | ${snapshot.requestMultiplier}x |\n`);
+  tooltip.appendMarkdown(`| Updated | ${updatedAt} |\n\n`);
+  tooltip.appendMarkdown("Click to manage API key, test connection, or refresh models.");
+
+  return tooltip;
+}
+
+function renderUsageBar(percent: number): string {
+  const width = 18;
+  const filled = Math.min(width, Math.max(0, Math.round((percent / 100) * width)));
+  return `[${"=".repeat(filled)}${"-".repeat(width - filled)}]`;
 }
