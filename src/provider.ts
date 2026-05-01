@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { getBridgeConfig } from "./config";
 import type { OllamaClient } from "./ollamaClient";
-import type { ChatCompletionPayload, OllamaModel, OpenAiMessage, OpenAiRole } from "./types";
+import type { ChatCompletionPayload, OllamaModel, OpenAiMessage, OpenAiRole, OpenAiToolCall } from "./types";
 
 type ChatInfo = vscode.LanguageModelChatInformation & {
   requestMultiplier?: number;
@@ -83,13 +83,22 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
       ...filterModelOptions(options.modelOptions),
       model: model.id,
       ...convertToolOptions(options),
-      messages: messages.map(convertMessage),
+      messages: messages.flatMap(convertMessage),
       stream: true
     };
 
     await this.client.streamChatCompletion(
       payload,
-      (text) => progress.report(new vscode.LanguageModelTextPart(text)),
+      (part) => {
+        if (part.type === "text") {
+          progress.report(new vscode.LanguageModelTextPart(part.value));
+          return;
+        }
+
+        progress.report(
+          new vscode.LanguageModelToolCallPart(part.value.callId, part.value.name, part.value.input)
+        );
+      },
       token
     );
   }
@@ -150,15 +159,52 @@ function convertToolOptions(
   };
 }
 
-function convertMessage(message: vscode.LanguageModelChatRequestMessage): OpenAiMessage {
-  return {
-    role: convertRole(message.role),
-    content: messageContentToText(message.content),
-    name: message.name
-  };
+function convertMessage(message: vscode.LanguageModelChatRequestMessage): OpenAiMessage[] {
+  const text = messageContentToText(message.content, false);
+  const toolCalls = message.content.filter(isToolCallPart);
+  const toolResults = message.content.filter(isToolResultPart);
+
+  if (toolResults.length > 0) {
+    const resultMessages = toolResults.map((part) => ({
+      role: "tool" as const,
+      content: toolResultContentToText(part.content),
+      tool_call_id: part.callId,
+      name: message.name
+    }));
+
+    return text.length > 0
+      ? [
+          {
+            role: "user",
+            content: text,
+            name: message.name
+          },
+          ...resultMessages
+        ]
+      : resultMessages;
+  }
+
+  if (toolCalls.length > 0) {
+    return [
+      {
+        role: "assistant",
+        content: text.length > 0 ? text : null,
+        name: message.name,
+        tool_calls: toolCalls.map(toOpenAiToolCall)
+      }
+    ];
+  }
+
+  return [
+    {
+      role: convertRole(message.role),
+      content: text,
+      name: message.name
+    }
+  ];
 }
 
-function convertRole(role: vscode.LanguageModelChatMessageRole): OpenAiRole {
+function convertRole(role: vscode.LanguageModelChatMessageRole): Exclude<OpenAiRole, "tool"> {
   if (role === vscode.LanguageModelChatMessageRole.Assistant) {
     return "assistant";
   }
@@ -166,11 +212,15 @@ function convertRole(role: vscode.LanguageModelChatMessageRole): OpenAiRole {
   return "user";
 }
 
-function messageContentToText(content: readonly unknown[]): string {
+function messageContentToText(content: readonly unknown[], includeToolResults = true): string {
   return content
     .map((part) => {
       if (part instanceof vscode.LanguageModelTextPart) {
         return part.value;
+      }
+
+      if (includeToolResults && isToolResultPart(part)) {
+        return toolResultContentToText(part.content);
       }
 
       if (typeof part === "string") {
@@ -185,6 +235,71 @@ function messageContentToText(content: readonly unknown[]): string {
       return "";
     })
     .join("");
+}
+
+function toolResultContentToText(content: readonly unknown[]): string {
+  return content.map(contentPartToText).filter(Boolean).join("\n");
+}
+
+function contentPartToText(part: unknown): string {
+  if (part instanceof vscode.LanguageModelTextPart) {
+    return part.value;
+  }
+
+  if (typeof part === "string") {
+    return part;
+  }
+
+  if (part && typeof part === "object" && "value" in part) {
+    const value = (part as { value?: unknown }).value;
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+
+  try {
+    return JSON.stringify(part);
+  } catch {
+    return "";
+  }
+}
+
+function toOpenAiToolCall(part: vscode.LanguageModelToolCallPart): OpenAiToolCall {
+  return {
+    id: part.callId,
+    type: "function",
+    function: {
+      name: part.name,
+      arguments: JSON.stringify(part.input ?? {})
+    }
+  };
+}
+
+function isToolCallPart(part: unknown): part is vscode.LanguageModelToolCallPart {
+  return (
+    part instanceof vscode.LanguageModelToolCallPart ||
+    Boolean(
+      part &&
+        typeof part === "object" &&
+        "callId" in part &&
+        "name" in part &&
+        "input" in part &&
+        !("content" in part)
+    )
+  );
+}
+
+function isToolResultPart(part: unknown): part is vscode.LanguageModelToolResultPart {
+  return (
+    part instanceof vscode.LanguageModelToolResultPart ||
+    Boolean(
+      part &&
+        typeof part === "object" &&
+        "callId" in part &&
+        "content" in part &&
+        Array.isArray((part as { content?: unknown }).content)
+    )
+  );
 }
 
 function filterModelOptions(modelOptions: Record<string, unknown> | undefined): Record<string, unknown> {

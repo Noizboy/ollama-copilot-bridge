@@ -1,10 +1,29 @@
 export type OpenAiRole = "system" | "user" | "assistant" | "tool";
 
-export interface OpenAiMessage {
-  role: OpenAiRole;
+export interface OpenAiToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface OpenAiChatMessage {
+  role: Exclude<OpenAiRole, "tool">;
+  content: string | null;
+  name?: string;
+  tool_calls?: OpenAiToolCall[];
+}
+
+export interface OpenAiToolMessage {
+  role: "tool";
   content: string;
+  tool_call_id: string;
   name?: string;
 }
+
+export type OpenAiMessage = OpenAiChatMessage | OpenAiToolMessage;
 
 export interface ChatCompletionPayload {
   model?: string;

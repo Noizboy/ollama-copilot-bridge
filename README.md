@@ -40,11 +40,23 @@ The bridge enriches models automatically with `POST /api/show`:
 - Capabilities come from Ollama's `capabilities` array.
 - Request multiplier is read if the provider returns one; otherwise it is estimated from `general.parameter_count`.
 
+## Agent Mode And Tool Calling
+
+Ollama Copilot Bridge supports VS Code tool calling for compatible Ollama models:
+
+- VS Code sends available Agent mode tools to the selected Ollama Bridge model.
+- The bridge forwards tool definitions to Ollama's OpenAI-compatible chat endpoint.
+- Streamed `tool_calls` are converted back into VS Code `LanguageModelToolCallPart` responses.
+- Follow-up tool results from VS Code are sent back to Ollama as OpenAI-compatible `tool` messages.
+
+Tool execution is still controlled by VS Code and GitHub Copilot. The model only requests a tool call; VS Code decides whether the tool is available, asks for confirmation when needed, runs the tool, and returns the result.
+
 ## Development
 
 ```bash
 npm install
 npm run compile
+npm test
 ```
 
 Then press `F5` in VS Code and run the extension in an Extension Development Host.

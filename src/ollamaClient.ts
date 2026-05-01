@@ -1,6 +1,7 @@
 import type * as vscode from "vscode";
 import { getBridgeConfig, joinUrl } from "./config";
 import { applyModelMetadata, formatModelTooltip, toOllamaModel, type OllamaShowResponse } from "./modelMetadata";
+import { readOpenAiStream, type OpenAiStreamPart } from "./openAiStream";
 import type { BridgeConfig, ChatCompletionPayload, OllamaModel, SecretProvider } from "./types";
 
 interface OpenAiModelsResponse {
@@ -125,7 +126,7 @@ export class OllamaClient {
 
   public async streamChatCompletion(
     payload: ChatCompletionPayload,
-    onText: (text: string) => void,
+    onPart: (part: OpenAiStreamPart) => void,
     token?: vscode.CancellationToken
   ): Promise<void> {
     const config = getBridgeConfig();
@@ -142,7 +143,7 @@ export class OllamaClient {
       throw new Error("Ollama returned an empty stream.");
     }
 
-    await readOpenAiStream(response.body, onText, token);
+    await readOpenAiStream(response.body, onPart, token);
   }
 
   private async fetchChatCompletion(
@@ -295,89 +296,6 @@ function sortModels(models: OllamaModel[], preferredModel: string): OllamaModel[
 
     return a.id.localeCompare(b.id);
   });
-}
-
-async function readOpenAiStream(
-  body: ReadableStream<Uint8Array>,
-  onText: (text: string) => void,
-  token?: vscode.CancellationToken
-): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  try {
-    while (true) {
-      if (token?.isCancellationRequested) {
-        await reader.cancel();
-        return;
-      }
-
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-      buffer = drainServerSentEvents(buffer, onText);
-    }
-
-    buffer += decoder.decode();
-    drainServerSentEvents(`${buffer}\n\n`, onText);
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-function drainServerSentEvents(buffer: string, onText: (text: string) => void): string {
-  let boundary = buffer.indexOf("\n\n");
-
-  while (boundary >= 0) {
-    const event = buffer.slice(0, boundary);
-    buffer = buffer.slice(boundary + 2);
-    handleServerSentEvent(event, onText);
-    boundary = buffer.indexOf("\n\n");
-  }
-
-  return buffer;
-}
-
-function handleServerSentEvent(event: string, onText: (text: string) => void): void {
-  const dataLines = event
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice("data:".length).trim());
-
-  for (const data of dataLines) {
-    if (!data || data === "[DONE]") {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(data) as {
-        choices?: Array<{
-          delta?: { content?: unknown };
-          message?: { content?: unknown };
-          text?: unknown;
-        }>;
-        message?: { content?: unknown };
-        response?: unknown;
-      };
-
-      const chunk =
-        parsed.choices?.[0]?.delta?.content ??
-        parsed.choices?.[0]?.message?.content ??
-        parsed.choices?.[0]?.text ??
-        parsed.message?.content ??
-        parsed.response;
-
-      if (typeof chunk === "string" && chunk.length > 0) {
-        onText(chunk);
-      }
-    } catch {
-      // Ignore malformed keepalive chunks.
-    }
-  }
 }
 
 async function createResponseError(prefix: string, response: Response): Promise<string> {
