@@ -1,4 +1,4 @@
-# Ollama Bridge Auto Orchestrator
+# Orquestador Automatico De Ollama Bridge
 
 ## Idea General
 
@@ -15,17 +15,17 @@ El usuario selecciona ese unico modelo, pero internamente la extension decide qu
 ```txt
 Usuario
 -> Auto Orchestrator
--> Analyzer
--> Planner Model
--> Implementer Model
--> Reviewer Model
--> Respuesta final / tool calls
+-> Analizador
+-> Modelo planificador
+-> Modelo implementador
+-> Modelo revisor
+-> Respuesta final / llamadas a herramientas
 ```
 
-La extension no reemplaza los Agents de GitHub Copilot. Los complementa.
+La extension no reemplaza los agentes de GitHub Copilot. Los complementa.
 
 ```txt
-Copilot Agent = define el rol y comportamiento
+Agente de Copilot = define el rol y el comportamiento
 Auto Orchestrator = decide que modelo usar internamente
 ```
 
@@ -84,11 +84,11 @@ Refactoriza este modulo, separa la logica de autenticacion, agrega tests y ejecu
 Internamente:
 
 ```txt
-Analyzer: complex
-Planner: deepseek-v4-pro
-Implementer: kimi-k2.6
-Reviewer: gpt-oss:120b
-Tool model: deepseek-v4-pro si hacen falta tools
+Analizador: complex
+Planificador: deepseek-v4-pro
+Implementador: kimi-k2.6
+Revisor: gpt-oss:120b
+Modelo de herramientas: deepseek-v4-pro si hacen falta herramientas
 ```
 
 El usuario solo ve una conversacion normal.
@@ -106,7 +106,7 @@ Corrige este typo en README.
 Ruta:
 
 ```txt
-User -> simpleModel -> final
+Usuario -> simpleModel -> final
 ```
 
 ### Tarea Media
@@ -120,7 +120,7 @@ Agrega una configuracion nueva y actualiza el README.
 Ruta:
 
 ```txt
-User -> plannerModel -> implementerModel -> final
+Usuario -> plannerModel -> implementerModel -> final
 ```
 
 ### Tarea Compleja
@@ -128,13 +128,13 @@ User -> plannerModel -> implementerModel -> final
 Ejemplo:
 
 ```txt
-Reestructura el provider para soportar multi-endpoint, tests y fallback.
+Reestructura el provider para soportar multiples endpoints, tests y fallback.
 ```
 
 Ruta:
 
 ```txt
-User -> plannerModel -> implementerModel -> reviewerModel -> final
+Usuario -> plannerModel -> implementerModel -> reviewerModel -> final
 ```
 
 ### Tarea Riesgosa
@@ -148,26 +148,26 @@ Modifica autenticacion, secretos, permisos o ejecucion de comandos.
 Ruta:
 
 ```txt
-User -> plannerModel -> implementerModel -> reviewerModel -> tests -> final
+Usuario -> plannerModel -> implementerModel -> reviewerModel -> tests -> final
 ```
 
 ## Clasificador De Complejidad
 
-El Analyzer decide la ruta segun la tarea.
+El analizador decide la ruta segun la tarea.
 
 Criterios:
 
 ```txt
 simple:
-- cambio pequeño
+- cambio pequeno
 - un archivo
 - no requiere tests
-- no requiere tools complejas
+- no requiere herramientas complejas
 
 medium:
 - varios archivos
 - configuracion nueva
-- cambios de UI pequeños
+- cambios pequenos de UI
 - tests recomendados
 
 complex:
@@ -178,7 +178,7 @@ complex:
 - requiere plan
 
 risky:
-- auth
+- autenticacion
 - secretos
 - seguridad
 - comandos/terminal
@@ -221,7 +221,7 @@ No revises
 
 ### fast
 
-Menos pasos. Menos costo y latencia.
+Menos pasos. Menos costo y menos latencia.
 
 ```txt
 simple -> simpleModel
@@ -257,18 +257,18 @@ Auto Orchestrator debe controlar que fases pueden usar herramientas.
 Regla recomendada:
 
 ```txt
-Analyzer: no tools
-Planner: read-only tools opcional
-Implementer: tools enabled
-Reviewer: read-only tools + terminal tests
+Analizador: sin herramientas
+Planificador: herramientas de solo lectura opcionales
+Implementador: herramientas habilitadas
+Revisor: herramientas de solo lectura + pruebas en terminal
 ```
 
-Si el modelo seleccionado para implementar no soporta tools:
+Si el modelo seleccionado para implementar no soporta herramientas:
 
 ```txt
 1. Intentar implementerModel
 2. Si no devuelve tool_calls, usar toolModel
-3. Si toolModel falla, responder con plan/manual steps
+3. Si toolModel falla, responder con plan/pasos manuales
 ```
 
 La extension ya debe convertir:
@@ -301,7 +301,7 @@ Ollama Copilot: Show Orchestrator Trace
 Opcion para mostrar una linea en el chat:
 
 ```txt
-Using: Planner DeepSeek V4 Pro -> Coder Kimi K2.6 -> Reviewer GPT-OSS 120B
+Usando: Planificador DeepSeek V4 Pro -> Programador Kimi K2.6 -> Revisor GPT-OSS 120B
 ```
 
 Configurable con:
@@ -319,7 +319,7 @@ Configurable con:
 Problema:
 
 ```txt
-analyzer -> planner -> implementer -> reviewer
+analizador -> planificador -> implementador -> revisor
 ```
 
 puede tardar mas.
@@ -327,7 +327,7 @@ puede tardar mas.
 Solucion:
 
 ```txt
-fast mode
+modo fast
 clasificacion por complejidad
 saltar planner/reviewer en tareas simples
 maxSteps
@@ -349,32 +349,32 @@ Solucion:
 
 ### 3. Perdida De Coherencia Entre Modelos
 
-Problema: el planner dice una cosa y el implementer entiende otra.
+Problema: el planificador dice una cosa y el implementador entiende otra.
 
 Solucion: convertir el plan en contrato.
 
 Formato:
 
 ```txt
-Goal:
-Files:
-Steps:
-Constraints:
+Objetivo:
+Archivos:
+Pasos:
+Restricciones:
 Tests:
-Do not:
+No hacer:
 ```
 
-El implementer recibe:
+El implementador recibe:
 
 ```txt
-Implement exactly this plan.
-Do not change unrelated files.
-If a step is impossible, explain why.
+Implementa exactamente este plan.
+No cambies archivos no relacionados.
+Si un paso es imposible, explica por que.
 ```
 
 ### 4. Tool Calling Desordenado
 
-Problema: cualquier fase podria intentar ejecutar tools.
+Problema: cualquier fase podria intentar ejecutar herramientas.
 
 Solucion:
 
@@ -389,10 +389,10 @@ Problema: muchas piezas pueden fallar.
 Solucion:
 
 ```txt
-Output trace
+traza en Output Channel
 duracion por fase
 modelo usado por fase
-status por fase
+estado por fase
 ultimo error por fase
 ```
 
@@ -408,26 +408,26 @@ Solucion:
 
 ```txt
 showTraceInChat
-Show Orchestrator Trace command
-Output Channel logs
+comando Show Orchestrator Trace
+logs en Output Channel
 ```
 
 ### 7. Modelos Sin Tool Calling Real
 
-Problema: algunos modelos dicen soportar tools pero no devuelven `tool_calls`.
+Problema: algunos modelos dicen soportar herramientas pero no devuelven `tool_calls`.
 
 Solucion:
 
 ```txt
 toolModel dedicado
 fallback si no hay tool_calls
-capability checks
+verificacion de capacidades
 lista local de modelos confiables
 ```
 
 ### 8. Fallos De Modelo Intermedio
 
-Problema: planner/implementer/reviewer puede fallar por timeout, 503 o overload.
+Problema: planner/implementer/reviewer puede fallar por timeout, 503 u overload.
 
 Solucion:
 
@@ -462,8 +462,8 @@ Opciones:
 
 ```txt
 chat-only = solo responde
-ask-before-tools = pide confirmacion antes de tools
-agent = usa tools como Agent mode permita
+ask-before-tools = pide confirmacion antes de herramientas
+agent = usa herramientas como Agent mode permita
 ```
 
 ### 10. Mala Eleccion De Modelo
@@ -485,16 +485,16 @@ Primera version:
 
 ```txt
 Auto Orchestrator
-├─ mode: fast | balanced | thorough
-├─ maxSteps
-├─ simpleModel
-├─ plannerModel
-├─ implementerModel
-├─ reviewerModel
-├─ toolModel
-├─ fallbackModels
-├─ showTraceInChat
-└─ output trace
+|- mode: fast | balanced | thorough
+|- maxSteps
+|- simpleModel
+|- plannerModel
+|- implementerModel
+|- reviewerModel
+|- toolModel
+|- fallbackModels
+|- showTraceInChat
+|- output trace
 ```
 
 Sin UI avanzada inicialmente. Solo settings JSON, logs y tests.
@@ -521,7 +521,7 @@ con un menu para escoger modelos disponibles.
 - Marcarlo con `id: auto-orchestrator`.
 - No enviarlo directamente a Ollama.
 
-### Fase 3: Analyzer
+### Fase 3: Analizador
 
 - Crear modulo `src/orchestrator/analyzer.ts`.
 - Clasificar complejidad con heuristicas locales.
@@ -579,8 +579,8 @@ El usuario trabaja asi:
 2. Selecciona Ollama Bridge: Auto Orchestrator como modelo.
 3. Pide la tarea normalmente.
 4. La extension decide que LLM usar por fase.
-5. Copilot/VS Code ejecuta tools si corresponde.
+5. Copilot/VS Code ejecuta herramientas si corresponde.
 6. El usuario recibe una respuesta final con plan, cambios o tool calls.
 ```
 
-Los Agents de Copilot siguen sirviendo. Auto Orchestrator solo mejora la seleccion interna de modelos.
+Los agentes de Copilot siguen sirviendo. Auto Orchestrator solo mejora la seleccion interna de modelos.
