@@ -1,59 +1,59 @@
-# Orquestador Automatico De Ollama Bridge
+# Ollama Bridge Auto Orchestrator
 
-## Idea General
+## General Idea
 
-Auto Orchestrator seria un modelo virtual dentro de Ollama Copilot Bridge.
+Auto Orchestrator would be a virtual model inside Ollama Copilot Bridge.
 
-En el selector de modelos de Copilot apareceria algo como:
+In Copilot's model picker, it would appear as:
 
 ```txt
 Ollama Bridge: Auto Orchestrator
 ```
 
-El usuario selecciona ese unico modelo, pero internamente la extension decide que LLM usar en cada fase:
+The user selects that single model, but internally the extension decides which LLM to use for each phase:
 
 ```txt
-Usuario
+User
 -> Auto Orchestrator
--> Analizador
--> Modelo planificador
--> Modelo implementador
--> Modelo revisor
--> Respuesta final / llamadas a herramientas
+-> Analyzer
+-> Planner model
+-> Implementer model
+-> Reviewer model
+-> Final response / tool calls
 ```
 
-La extension no reemplaza los agentes de GitHub Copilot. Los complementa.
+The extension does not replace GitHub Copilot Agents. It complements them.
 
 ```txt
-Agente de Copilot = define el rol y el comportamiento
-Auto Orchestrator = decide que modelo usar internamente
+Copilot Agent = defines the role and behavior
+Auto Orchestrator = decides which model to use internally
 ```
 
-Ejemplo:
+Example:
 
 ```txt
 PM-Agent + Ollama Bridge: Auto Orchestrator
 ```
 
-PM-Agent define el tipo de trabajo. Auto Orchestrator decide si usa un modelo para planear, otro para implementar y otro para revisar.
+PM-Agent defines the type of work. Auto Orchestrator decides whether to use one model for planning, another for implementation, and another for review.
 
-## Uso Practico
+## Practical Usage
 
-1. Instalar la extension.
+1. Install the extension.
 
 ```powershell
 code --install-extension .\ollama-copilot-bridge-0.0.3.vsix --force
 ```
 
-2. Recargar VS Code.
+2. Reload VS Code.
 
-3. Configurar la API key:
+3. Configure the API key:
 
 ```txt
 Ollama Copilot: Set API Key
 ```
 
-4. Configurar modelos del orquestador:
+4. Configure the orchestrator models:
 
 ```json
 {
@@ -67,136 +67,136 @@ Ollama Copilot: Set API Key
 }
 ```
 
-5. En Copilot Chat seleccionar:
+5. In Copilot Chat, select:
 
 ```txt
 Ollama Bridge: Auto Orchestrator
 ```
 
-6. Usar Agent mode normalmente.
+6. Use Agent mode normally.
 
-Ejemplo:
-
-```txt
-Refactoriza este modulo, separa la logica de autenticacion, agrega tests y ejecuta la suite.
-```
-
-Internamente:
+Example:
 
 ```txt
-Analizador: complex
-Planificador: deepseek-v4-pro
-Implementador: kimi-k2.6
-Revisor: gpt-oss:120b
-Modelo de herramientas: deepseek-v4-pro si hacen falta herramientas
+Refactor this module, separate the authentication logic, add tests, and run the suite.
 ```
 
-El usuario solo ve una conversacion normal.
-
-## Rutas De Ejecucion
-
-### Tarea Simple
-
-Ejemplo:
+Internally:
 
 ```txt
-Corrige este typo en README.
+Analyzer: complex
+Planner: deepseek-v4-pro
+Implementer: kimi-k2.6
+Reviewer: gpt-oss:120b
+Tool model: deepseek-v4-pro if tools are needed
 ```
 
-Ruta:
+The user only sees a normal conversation.
+
+## Execution Routes
+
+### Simple Task
+
+Example:
 
 ```txt
-Usuario -> simpleModel -> final
+Fix this typo in README.
 ```
 
-### Tarea Media
-
-Ejemplo:
+Route:
 
 ```txt
-Agrega una configuracion nueva y actualiza el README.
+User -> simpleModel -> final
 ```
 
-Ruta:
+### Medium Task
+
+Example:
 
 ```txt
-Usuario -> plannerModel -> implementerModel -> final
+Add a new setting and update the README.
 ```
 
-### Tarea Compleja
-
-Ejemplo:
+Route:
 
 ```txt
-Reestructura el provider para soportar multiples endpoints, tests y fallback.
+User -> plannerModel -> implementerModel -> final
 ```
 
-Ruta:
+### Complex Task
+
+Example:
 
 ```txt
-Usuario -> plannerModel -> implementerModel -> reviewerModel -> final
+Restructure the provider to support multiple endpoints, tests, and fallback.
 ```
 
-### Tarea Riesgosa
-
-Ejemplo:
+Route:
 
 ```txt
-Modifica autenticacion, secretos, permisos o ejecucion de comandos.
+User -> plannerModel -> implementerModel -> reviewerModel -> final
 ```
 
-Ruta:
+### Risky Task
+
+Example:
 
 ```txt
-Usuario -> plannerModel -> implementerModel -> reviewerModel -> tests -> final
+Modify authentication, secrets, permissions, or command execution.
 ```
 
-## Clasificador De Complejidad
+Route:
 
-El analizador decide la ruta segun la tarea.
+```txt
+User -> plannerModel -> implementerModel -> reviewerModel -> tests -> final
+```
 
-Criterios:
+## Complexity Classifier
+
+The analyzer decides the route based on the task.
+
+Criteria:
 
 ```txt
 simple:
-- cambio pequeno
-- un archivo
-- no requiere tests
-- no requiere herramientas complejas
+- small change
+- one file
+- no tests required
+- no complex tools required
 
 medium:
-- varios archivos
-- configuracion nueva
-- cambios pequenos de UI
-- tests recomendados
+- multiple files
+- new configuration
+- small UI changes
+- tests recommended
 
 complex:
 - refactor
-- arquitectura
-- varios modulos
-- cambios de provider/API
-- requiere plan
+- architecture
+- multiple modules
+- provider/API changes
+- requires a plan
 
 risky:
-- autenticacion
-- secretos
-- seguridad
-- comandos/terminal
-- datos sensibles
-- cambios destructivos
+- authentication
+- secrets
+- security
+- commands/terminal
+- sensitive data
+- destructive changes
 ```
 
-Tambien puede detectar overrides manuales en el prompt:
+It can also detect manual overrides in the prompt:
 
 ```txt
-Usa modo fast
-Usa modo thorough
-Usa solo Kimi
-Usa planner fuerte
-No revises
+Use fast mode
+Use thorough mode
+Use only Kimi
+Use strong planner
+Do not review
 ```
 
-## Configuracion Recomendada
+## Recommended Configuration
 
 ```json
 {
@@ -217,11 +217,11 @@ No revises
 }
 ```
 
-## Modos
+## Modes
 
 ### fast
 
-Menos pasos. Menos costo y menos latencia.
+Fewer steps. Lower cost and lower latency.
 
 ```txt
 simple -> simpleModel
@@ -231,7 +231,7 @@ complex -> plannerModel -> implementerModel
 
 ### balanced
 
-Balance entre calidad y velocidad.
+Balance between quality and speed.
 
 ```txt
 simple -> simpleModel
@@ -241,7 +241,7 @@ complex -> plannerModel -> implementerModel -> reviewerModel
 
 ### thorough
 
-Mas lento, pero mas cuidadoso.
+Slower, but more careful.
 
 ```txt
 simple -> implementerModel
@@ -252,37 +252,37 @@ risky -> plannerModel -> reviewerModel -> implementerModel -> reviewerModel -> t
 
 ## Tool Calling
 
-Auto Orchestrator debe controlar que fases pueden usar herramientas.
+Auto Orchestrator must control which phases can use tools.
 
-Regla recomendada:
-
-```txt
-Analizador: sin herramientas
-Planificador: herramientas de solo lectura opcionales
-Implementador: herramientas habilitadas
-Revisor: herramientas de solo lectura + pruebas en terminal
-```
-
-Si el modelo seleccionado para implementar no soporta herramientas:
+Recommended rule:
 
 ```txt
-1. Intentar implementerModel
-2. Si no devuelve tool_calls, usar toolModel
-3. Si toolModel falla, responder con plan/pasos manuales
+Analyzer: no tools
+Planner: optional read-only tools
+Implementer: tools enabled
+Reviewer: read-only tools + terminal tests
 ```
 
-La extension ya debe convertir:
+If the selected implementation model does not support tools:
+
+```txt
+1. Try implementerModel
+2. If it does not return tool_calls, use toolModel
+3. If toolModel fails, respond with a plan/manual steps
+```
+
+The extension should already convert:
 
 ```txt
 OpenAI/Ollama tool_calls -> VS Code LanguageModelToolCallPart
 VS Code LanguageModelToolResultPart -> OpenAI role: tool
 ```
 
-VS Code/Copilot sigue controlando la ejecucion real de herramientas y confirmaciones.
+VS Code/Copilot still controls actual tool execution and confirmations.
 
-## Logs Y Trazabilidad
+## Logs And Traceability
 
-El Output Channel deberia mostrar:
+The Output Channel should show:
 
 ```txt
 [Orchestrator] phase=analyze model=gemma3:12b status=ok duration=1.2s
@@ -292,19 +292,19 @@ El Output Channel deberia mostrar:
 [Orchestrator] phase=review model=gpt-oss:120b status=ok duration=7.1s
 ```
 
-Comando recomendado:
+Recommended command:
 
 ```txt
 Ollama Copilot: Show Orchestrator Trace
 ```
 
-Opcion para mostrar una linea en el chat:
+Optional line shown in chat:
 
 ```txt
-Usando: Planificador DeepSeek V4 Pro -> Programador Kimi K2.6 -> Revisor GPT-OSS 120B
+Using: Planner DeepSeek V4 Pro -> Coder Kimi K2.6 -> Reviewer GPT-OSS 120B
 ```
 
-Configurable con:
+Configurable with:
 
 ```json
 {
@@ -312,32 +312,32 @@ Configurable con:
 }
 ```
 
-## Desventajas Y Soluciones
+## Downsides And Solutions
 
-### 1. Mas Latencia
+### 1. Higher Latency
 
-Problema:
+Problem:
 
 ```txt
-analizador -> planificador -> implementador -> revisor
+analyzer -> planner -> implementer -> reviewer
 ```
 
-puede tardar mas.
+can take longer.
 
-Solucion:
+Solution:
 
 ```txt
-modo fast
-clasificacion por complejidad
-saltar planner/reviewer en tareas simples
+fast mode
+complexity-based routing
+skip planner/reviewer for simple tasks
 maxSteps
 ```
 
-### 2. Mas Costo O Uso De Cuota
+### 2. Higher Cost Or Quota Usage
 
-Problema: varias llamadas consumen mas tokens.
+Problem: multiple calls consume more tokens.
 
-Solucion:
+Solution:
 
 ```json
 {
@@ -347,89 +347,89 @@ Solucion:
 }
 ```
 
-### 3. Perdida De Coherencia Entre Modelos
+### 3. Loss Of Coherence Between Models
 
-Problema: el planificador dice una cosa y el implementador entiende otra.
+Problem: the planner says one thing and the implementer understands another.
 
-Solucion: convertir el plan en contrato.
+Solution: convert the plan into a contract.
 
-Formato:
+Format:
 
 ```txt
-Objetivo:
-Archivos:
-Pasos:
-Restricciones:
+Goal:
+Files:
+Steps:
+Constraints:
 Tests:
-No hacer:
+Do not:
 ```
 
-El implementador recibe:
+The implementer receives:
 
 ```txt
-Implementa exactamente este plan.
-No cambies archivos no relacionados.
-Si un paso es imposible, explica por que.
+Implement exactly this plan.
+Do not change unrelated files.
+If a step is impossible, explain why.
 ```
 
-### 4. Tool Calling Desordenado
+### 4. Messy Tool Calling
 
-Problema: cualquier fase podria intentar ejecutar herramientas.
+Problem: any phase could try to execute tools.
 
-Solucion:
+Solution:
 
 ```txt
 toolsEnabled = phase === "implement" || phase === "review"
 ```
 
-### 5. Debug Dificil
+### 5. Harder Debugging
 
-Problema: muchas piezas pueden fallar.
+Problem: many pieces can fail.
 
-Solucion:
+Solution:
 
 ```txt
-traza en Output Channel
-duracion por fase
-modelo usado por fase
-estado por fase
-ultimo error por fase
+Output Channel trace
+duration per phase
+model used per phase
+status per phase
+last error per phase
 ```
 
-### 6. Confusion Porque El Selector No Cambia
+### 6. Confusion Because The Picker Does Not Change
 
-Problema: el usuario ve solo:
+Problem: the user only sees:
 
 ```txt
 Ollama Bridge: Auto Orchestrator
 ```
 
-Solucion:
+Solution:
 
 ```txt
 showTraceInChat
-comando Show Orchestrator Trace
-logs en Output Channel
+Show Orchestrator Trace command
+Output Channel logs
 ```
 
-### 7. Modelos Sin Tool Calling Real
+### 7. Models Without Real Tool Calling
 
-Problema: algunos modelos dicen soportar herramientas pero no devuelven `tool_calls`.
+Problem: some models claim to support tools but do not return `tool_calls`.
 
-Solucion:
+Solution:
 
 ```txt
-toolModel dedicado
-fallback si no hay tool_calls
-verificacion de capacidades
-lista local de modelos confiables
+dedicated toolModel
+fallback when there are no tool_calls
+capability checks
+local list of reliable models
 ```
 
-### 8. Fallos De Modelo Intermedio
+### 8. Intermediate Model Failures
 
-Problema: planner/implementer/reviewer puede fallar por timeout, 503 u overload.
+Problem: planner/implementer/reviewer may fail due to timeout, 503, or overload.
 
-Solucion:
+Solution:
 
 ```json
 {
@@ -438,19 +438,19 @@ Solucion:
 }
 ```
 
-Reglas:
+Rules:
 
 ```txt
-planner falla -> usar plannerFallback
-implementer falla -> usar implementerFallback
-reviewer falla -> continuar sin reviewer
+planner fails -> use plannerFallback
+implementer fails -> use implementerFallback
+reviewer fails -> continue without reviewer
 ```
 
-### 9. Demasiada Autonomia
+### 9. Too Much Autonomy
 
-Problema: el orquestador podria hacer mas de lo esperado.
+Problem: the orchestrator could do more than expected.
 
-Solucion:
+Solution:
 
 ```json
 {
@@ -458,30 +458,30 @@ Solucion:
 }
 ```
 
-Opciones:
+Options:
 
 ```txt
-chat-only = solo responde
-ask-before-tools = pide confirmacion antes de herramientas
-agent = usa herramientas como Agent mode permita
+chat-only = only responds
+ask-before-tools = asks for confirmation before tools
+agent = uses tools as Agent mode allows
 ```
 
-### 10. Mala Eleccion De Modelo
+### 10. Wrong Model Choice
 
-Problema: el clasificador puede equivocarse.
+Problem: the classifier can be wrong.
 
-Solucion:
+Solution:
 
 ```txt
-override manual en prompt
-settings por fase
-fallback por fase
-logs para revisar decisiones
+manual override in the prompt
+settings per phase
+fallback per phase
+logs to review decisions
 ```
 
-## MVP Recomendado
+## Recommended MVP
 
-Primera version:
+First version:
 
 ```txt
 Auto Orchestrator
@@ -497,40 +497,40 @@ Auto Orchestrator
 |- output trace
 ```
 
-Sin UI avanzada inicialmente. Solo settings JSON, logs y tests.
+No advanced UI at first. Only JSON settings, logs, and tests.
 
-Despues agregar:
+Later, add:
 
 ```txt
 Ollama Copilot: Configure Orchestrator
 ```
 
-con un menu para escoger modelos disponibles.
+with a menu to choose available models.
 
-## Plan De Implementacion
+## Implementation Plan
 
-### Fase 1: Configuracion
+### Phase 1: Configuration
 
-- Agregar settings del orquestador en `package.json`.
-- Crear tipos `OrchestratorConfig`.
-- Leer config desde `src/config.ts`.
+- Add orchestrator settings in `package.json`.
+- Create `OrchestratorConfig` types.
+- Read config from `src/config.ts`.
 
-### Fase 2: Modelo Virtual
+### Phase 2: Virtual Model
 
-- Agregar `Ollama Bridge: Auto Orchestrator` a la lista de modelos.
-- Marcarlo con `id: auto-orchestrator`.
-- No enviarlo directamente a Ollama.
+- Add `Ollama Bridge: Auto Orchestrator` to the model list.
+- Mark it with `id: auto-orchestrator`.
+- Do not send it directly to Ollama.
 
-### Fase 3: Analizador
+### Phase 3: Analyzer
 
-- Crear modulo `src/orchestrator/analyzer.ts`.
-- Clasificar complejidad con heuristicas locales.
-- Opcional: usar `simpleModel` para clasificacion avanzada.
+- Create `src/orchestrator/analyzer.ts`.
+- Classify complexity with local heuristics.
+- Optionally use `simpleModel` for advanced classification.
 
-### Fase 4: Pipeline
+### Phase 4: Pipeline
 
-- Crear `src/orchestrator/orchestrator.ts`.
-- Implementar rutas:
+- Create `src/orchestrator/orchestrator.ts`.
+- Implement routes:
 
 ```txt
 simple -> simpleModel
@@ -539,48 +539,48 @@ complex -> planner -> implementer -> reviewer
 risky -> planner -> implementer -> reviewer + tests
 ```
 
-### Fase 5: Cliente Interno
+### Phase 5: Internal Client
 
-- Agregar a `OllamaClient` un metodo para request no-stream o stream acumulado.
-- Permitir llamadas internas por fase.
+- Add a non-stream or accumulated-stream request method to `OllamaClient`.
+- Allow internal calls per phase.
 
-### Fase 6: Tool Calling
+### Phase 6: Tool Calling
 
-- Reusar `openAiStream.ts`.
-- Emitir tool calls solo desde fases autorizadas.
-- Reenviar tool results al modelo correcto.
+- Reuse `openAiStream.ts`.
+- Emit tool calls only from authorized phases.
+- Send tool results back to the correct model.
 
-### Fase 7: Trazabilidad
+### Phase 7: Traceability
 
-- Agregar logs por fase.
-- Agregar comando `Ollama Copilot: Show Orchestrator Trace`.
-- Agregar `showTraceInChat`.
+- Add logs per phase.
+- Add command `Ollama Copilot: Show Orchestrator Trace`.
+- Add `showTraceInChat`.
 
-### Fase 8: Tests
+### Phase 8: Tests
 
-Tests recomendados:
-
-```txt
-clasifica tarea simple
-clasifica tarea compleja
-elige ruta segun modo
-usa fallback si falla planner
-usa toolModel si implementer no soporta tools
-no duplica tool results
-genera trace
-```
-
-## Resultado Esperado
-
-El usuario trabaja asi:
+Recommended tests:
 
 ```txt
-1. Selecciona PM-Agent, Backend-Agent, Reviewer-Agent, etc.
-2. Selecciona Ollama Bridge: Auto Orchestrator como modelo.
-3. Pide la tarea normalmente.
-4. La extension decide que LLM usar por fase.
-5. Copilot/VS Code ejecuta herramientas si corresponde.
-6. El usuario recibe una respuesta final con plan, cambios o tool calls.
+classifies simple task
+classifies complex task
+chooses route by mode
+uses fallback if planner fails
+uses toolModel if implementer does not support tools
+does not duplicate tool results
+generates trace
 ```
 
-Los agentes de Copilot siguen sirviendo. Auto Orchestrator solo mejora la seleccion interna de modelos.
+## Expected Result
+
+The user works like this:
+
+```txt
+1. Select PM-Agent, Backend-Agent, Reviewer-Agent, etc.
+2. Select Ollama Bridge: Auto Orchestrator as the model.
+3. Ask for the task normally.
+4. The extension decides which LLM to use per phase.
+5. Copilot/VS Code runs tools when appropriate.
+6. The user receives a final response with the plan, changes, or tool calls.
+```
+
+Copilot Agents still work. Auto Orchestrator only improves the internal model selection.
