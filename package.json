@@ -2,10 +2,31 @@
   "name": "ollama-copilot-bridge",
   "displayName": "Ollama Copilot Bridge",
   "description": "Use Ollama Cloud models in VS Code chat through a VS Code language model provider.",
-  "version": "0.0.3",
-  "publisher": "local",
+  "version": "0.0.6",
+  "publisher": "AlejandroG",
   "license": "MIT",
   "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Noizboy/ollama-copilot-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Noizboy/ollama-copilot-bridge/issues"
+  },
+  "homepage": "https://github.com/Noizboy/ollama-copilot-bridge#readme",
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#0f62fe",
+    "theme": "dark"
+  },
+  "keywords": [
+    "ollama",
+    "copilot",
+    "language-model",
+    "chat",
+    "ai",
+    "llm"
+  ],
   "engines": {
     "vscode": "^1.104.0"
   },
@@ -107,6 +128,16 @@
           "minimum": 250,
           "maximum": 30000,
           "description": "Base delay used for exponential backoff between retry attempts."
+        },
+        "ollamaCopilot.visionModels": {
+          "type": "array",
+          "default": [
+            "kimi-k2.6*"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Model IDs or wildcard patterns that should be advertised to VS Code as image-capable when provider metadata omits vision support."
         }
       }
     }
@@ -117,7 +148,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js out-test/test/openAiStream.test.js out-test/test/contextUsage.test.js",
-    "package": "npm run compile && vsce package --allow-missing-repository"
+    "package": "npm run compile && vsce package"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

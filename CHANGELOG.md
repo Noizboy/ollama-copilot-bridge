@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.6
+
+- Added `ollamaCopilot.visionModels` for manually marking model IDs or wildcard patterns as image-capable.
+
+## 0.0.5
+
+- Marked known Ollama vision models such as `kimi-k2.6:cloud` as image-capable when provider metadata omits `vision`.
+- Added tests for vision model inference.
+
+## 0.0.4
+
+- Added image attachment forwarding for vision-capable models.
+- Added a clear error when images are attached to text-only models.
+
 ## 0.0.3
 
 - Added a status bar hover with last-request context usage for Ollama Bridge models.

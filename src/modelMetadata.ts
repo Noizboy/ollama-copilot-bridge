@@ -64,7 +64,11 @@ export function applyModelMetadata(
   const requestMultiplier = extractRequestMultiplier(metadata) ?? estimateRequestMultiplier(parameterCount);
   const rawCapabilities = metadata.capabilities ?? [];
   const capabilities = new Set(rawCapabilities.map((capability) => capability.toLowerCase()));
-  const supportsImages = rawCapabilities.length > 0 ? capabilities.has("vision") : model.supportsImages;
+  const supportsImages =
+    capabilities.has("vision") ||
+    model.supportsImages ||
+    matchesConfiguredVisionModel(model.id, config.visionModels) ||
+    inferVisionSupport(model.id, metadata.details?.family ?? metadata.details?.families?.[0] ?? model.family);
   const supportsTools = rawCapabilities.length > 0
     ? capabilities.has("tools") || capabilities.has("tool") || capabilities.has("function_calling")
     : model.supportsTools;
@@ -148,6 +152,54 @@ export function estimateRequestMultiplier(parameterCount: number | undefined): n
   }
 
   return 1;
+}
+
+export function inferVisionSupport(id: string, family?: string): boolean {
+  const value = `${id} ${family ?? ""}`.toLowerCase();
+  const visionMarkers = [
+    "bakllava",
+    "gemma3",
+    "kimi-k2.6",
+    "llava",
+    "minicpm-v",
+    "moondream",
+    "pixtral",
+    "qwen-vl",
+    "qwen2-vl",
+    "qwen2.5vl",
+    "qwen2.5-vl",
+    "vision",
+    "vlm"
+  ];
+
+  return visionMarkers.some((marker) => value.includes(marker));
+}
+
+export function matchesConfiguredVisionModel(id: string, patterns: readonly string[]): boolean {
+  const normalizedId = id.toLowerCase();
+
+  return patterns.some((pattern) => {
+    const normalizedPattern = pattern.trim().toLowerCase();
+
+    if (!normalizedPattern) {
+      return false;
+    }
+
+    if (!normalizedPattern.includes("*")) {
+      return normalizedId === normalizedPattern;
+    }
+
+    return wildcardToRegExp(normalizedPattern).test(normalizedId);
+  });
+}
+
+function wildcardToRegExp(pattern: string): RegExp {
+  const escaped = pattern
+    .split("*")
+    .map((part) => part.replace(/[|\\{}()[\]^$+?.]/g, "\\$&"))
+    .join(".*");
+
+  return new RegExp(`^${escaped}$`);
 }
 
 function capitalizeModelPart(part: string): string {

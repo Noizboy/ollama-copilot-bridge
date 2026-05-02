@@ -2,7 +2,15 @@ import * as vscode from "vscode";
 import { getBridgeConfig } from "./config";
 import { buildContextUsageSnapshot, type ContextUsageSnapshot } from "./contextUsage";
 import type { OllamaClient } from "./ollamaClient";
-import type { ChatCompletionPayload, OllamaModel, OpenAiMessage, OpenAiRole, OpenAiToolCall } from "./types";
+import type {
+  ChatCompletionPayload,
+  OllamaModel,
+  OpenAiChatContent,
+  OpenAiContentPart,
+  OpenAiMessage,
+  OpenAiRole,
+  OpenAiToolCall
+} from "./types";
 
 type ChatInfo = vscode.LanguageModelChatInformation & {
   requestMultiplier?: number;
@@ -84,6 +92,17 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
   ): Promise<void> {
     const inputText = messages.map((message) => messageContentToText(message.content)).join("\n");
     let outputText = "";
+    const hasImages = messages.some((message) => hasImageParts(message.content));
+
+    if (hasImages && !model.capabilities.imageInput) {
+      throw vscode.LanguageModelError.Blocked(
+        `${model.name} does not support image input. Select an Ollama Bridge model with vision capability before attaching images.`
+      );
+    }
+
+    this.output.appendLine(
+      `Chat request model: ${model.name} (${model.id}); tools=${options.tools?.length ?? 0}; toolMode=${String(options.toolMode)}`
+    );
 
     this.contextUsageEmitter.fire(
       buildContextUsageSnapshot({
@@ -190,7 +209,8 @@ function convertToolOptions(
 }
 
 function convertMessage(message: vscode.LanguageModelChatRequestMessage): OpenAiMessage[] {
-  const text = messageContentToText(message.content, false);
+  const content = messageContentToOpenAiContent(message.content, false);
+  const text = openAiContentToText(content);
   const toolCalls = message.content.filter(isToolCallPart);
   const toolResults = message.content.filter(isToolResultPart);
 
@@ -206,7 +226,7 @@ function convertMessage(message: vscode.LanguageModelChatRequestMessage): OpenAi
       ? [
           {
             role: "user",
-            content: text,
+            content,
             name: message.name
           },
           ...resultMessages
@@ -228,7 +248,7 @@ function convertMessage(message: vscode.LanguageModelChatRequestMessage): OpenAi
   return [
     {
       role: convertRole(message.role),
-      content: text,
+      content,
       name: message.name
     }
   ];
@@ -264,6 +284,69 @@ function messageContentToText(content: readonly unknown[], includeToolResults = 
 
       return "";
     })
+    .join("");
+}
+
+function messageContentToOpenAiContent(
+  content: readonly unknown[],
+  includeToolResults = true
+): OpenAiChatContent {
+  const parts = content.flatMap((part): OpenAiContentPart[] => {
+    if (part instanceof vscode.LanguageModelTextPart) {
+      return part.value ? [{ type: "text", text: part.value }] : [];
+    }
+
+    if (includeToolResults && isToolResultPart(part)) {
+      const text = toolResultContentToText(part.content);
+      return text ? [{ type: "text", text }] : [];
+    }
+
+    if (isImageDataPart(part)) {
+      return [
+        {
+          type: "image_url",
+          image_url: {
+            url: toDataUrl(part)
+          }
+        }
+      ];
+    }
+
+    if (typeof part === "string") {
+      return part ? [{ type: "text", text: part }] : [];
+    }
+
+    if (part && typeof part === "object" && "value" in part) {
+      const value = (part as { value?: unknown }).value;
+      return typeof value === "string" && value ? [{ type: "text", text: value }] : [];
+    }
+
+    return [];
+  });
+
+  if (parts.length === 0) {
+    return "";
+  }
+
+  if (parts.every((part) => part.type === "text")) {
+    return parts.map((part) => part.text).join("");
+  }
+
+  return parts;
+}
+
+function openAiContentToText(content: OpenAiChatContent): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!content) {
+    return "";
+  }
+
+  return content
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
     .join("");
 }
 
@@ -330,6 +413,32 @@ function isToolResultPart(part: unknown): part is vscode.LanguageModelToolResult
         Array.isArray((part as { content?: unknown }).content)
     )
   );
+}
+
+function hasImageParts(content: readonly unknown[]): boolean {
+  return content.some(isImageDataPart);
+}
+
+function isImageDataPart(part: unknown): part is vscode.LanguageModelDataPart {
+  return isDataPart(part) && part.mimeType.toLowerCase().startsWith("image/");
+}
+
+function isDataPart(part: unknown): part is vscode.LanguageModelDataPart {
+  return (
+    part instanceof vscode.LanguageModelDataPart ||
+    Boolean(
+      part &&
+        typeof part === "object" &&
+        "mimeType" in part &&
+        typeof (part as { mimeType?: unknown }).mimeType === "string" &&
+        "data" in part &&
+        (part as { data?: unknown }).data instanceof Uint8Array
+    )
+  );
+}
+
+function toDataUrl(part: vscode.LanguageModelDataPart): string {
+  return `data:${part.mimeType};base64,${Buffer.from(part.data).toString("base64")}`;
 }
 
 function filterModelOptions(modelOptions: Record<string, unknown> | undefined): Record<string, unknown> {

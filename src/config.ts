@@ -18,7 +18,8 @@ export function getBridgeConfig(): BridgeConfig {
     maxOutputTokens: config.get("maxOutputTokens", 2048),
     requestTimeoutMs: config.get("requestTimeoutMs", 120000),
     retryMaxAttempts: config.get("retryMaxAttempts", 4),
-    retryBaseDelayMs: config.get("retryBaseDelayMs", 1500)
+    retryBaseDelayMs: config.get("retryBaseDelayMs", 1500),
+    visionModels: normalizeStringList(config.get("visionModels", []))
   };
 }
 
@@ -37,6 +38,17 @@ function normalizePath(value: string): string {
   }
 
   return `/${trimmed.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function joinUrl(base: string, path: string): string {

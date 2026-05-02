@@ -9,9 +9,23 @@ export interface OpenAiToolCall {
   };
 }
 
+export type OpenAiChatContent = string | OpenAiContentPart[] | null;
+
+export type OpenAiContentPart =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "image_url";
+      image_url: {
+        url: string;
+      };
+    };
+
 export interface OpenAiChatMessage {
   role: Exclude<OpenAiRole, "tool">;
-  content: string | null;
+  content: OpenAiChatContent;
   name?: string;
   tool_calls?: OpenAiToolCall[];
 }
@@ -57,6 +71,7 @@ export interface BridgeConfig {
   requestTimeoutMs: number;
   retryMaxAttempts: number;
   retryBaseDelayMs: number;
+  visionModels: string[];
 }
 
 export interface SecretProvider {

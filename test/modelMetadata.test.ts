@@ -6,7 +6,9 @@ import {
   extractContextLength,
   extractRequestMultiplier,
   formatModelName,
+  inferVisionSupport,
   inferFamily,
+  matchesConfiguredVisionModel,
   toOllamaModel
 } from "../src/modelMetadata";
 import type { BridgeConfig } from "../src/types";
@@ -21,7 +23,8 @@ const config: BridgeConfig = {
   maxOutputTokens: 2048,
   requestTimeoutMs: 120000,
   retryMaxAttempts: 4,
-  retryBaseDelayMs: 1500
+  retryBaseDelayMs: 1500,
+  visionModels: ["custom-vision:*"]
 };
 
 describe("model metadata helpers", () => {
@@ -66,6 +69,20 @@ describe("model metadata helpers", () => {
     assert.equal(estimateRequestMultiplier(100_000_000_000), 10);
   });
 
+  it("infers image support for known vision models", () => {
+    assert.equal(inferVisionSupport("kimi-k2.6:cloud"), true);
+    assert.equal(inferVisionSupport("llava:13b"), true);
+    assert.equal(inferVisionSupport("qwen2.5-vl:72b"), true);
+    assert.equal(inferVisionSupport("deepseek-v4-pro"), false);
+  });
+
+  it("matches configured vision model patterns", () => {
+    assert.equal(matchesConfiguredVisionModel("custom-vision:latest", ["custom-vision:*"]), true);
+    assert.equal(matchesConfiguredVisionModel("kimi-k2.6:cloud", ["KIMI-K2.6*"]), true);
+    assert.equal(matchesConfiguredVisionModel("kimi-k2.6:cloud", ["kimi-k2.6"]), false);
+    assert.equal(matchesConfiguredVisionModel("deepseek-v4-pro", ["custom-vision:*"]), false);
+  });
+
   it("applies metadata from Ollama /api/show", () => {
     const base = toOllamaModel("llava:13b", config);
     const enriched = applyModelMetadata(
@@ -93,6 +110,35 @@ describe("model metadata helpers", () => {
     assert.equal(enriched.supportsTools, true);
     assert.equal(enriched.supportsImages, true);
     assert.match(enriched.tooltip ?? "", /Context 33K/);
+  });
+
+  it("keeps known vision models image-capable when metadata omits vision capability", () => {
+    const base = toOllamaModel("kimi-k2.6:cloud", config);
+    const enriched = applyModelMetadata(
+      base,
+      {
+        capabilities: ["completion"],
+        details: {
+          family: "kimi"
+        }
+      },
+      config
+    );
+
+    assert.equal(enriched.supportsImages, true);
+  });
+
+  it("marks configured vision models image-capable when metadata omits vision capability", () => {
+    const base = toOllamaModel("custom-vision:latest", config);
+    const enriched = applyModelMetadata(
+      base,
+      {
+        capabilities: ["completion"]
+      },
+      config
+    );
+
+    assert.equal(enriched.supportsImages, true);
   });
 
   it("falls back to num_ctx and preserves capabilities when /api/show omits them", () => {
