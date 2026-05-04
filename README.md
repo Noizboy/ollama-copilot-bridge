@@ -1,90 +1,152 @@
 # Ollama Copilot Bridge
 
-Use Ollama Cloud and Ollama-compatible models directly from VS Code Copilot Chat through the official VS Code Language Model Provider API.
+Use Ollama Cloud, local Ollama, or any Ollama-compatible OpenAI endpoint from the VS Code chat model picker.
 
-> This project is community-built and is not affiliated with GitHub, Microsoft, or Ollama.
+Ollama Copilot Bridge registers an **Ollama Bridge** language model provider in VS Code, discovers your available models, streams responses into chat, and keeps the setup flow inside the editor.
 
-## Why This Exists
+> Ollama Copilot Bridge is community-built and is not affiliated with GitHub, Microsoft, or Ollama.
 
-GitHub Copilot Chat in VS Code can work with contributed language models, but external Ollama models need a bridge that speaks both sides:
+## Screenshots
 
-- VS Code expects a Language Model Chat Provider.
-- Ollama Cloud exposes OpenAI-compatible and native Ollama APIs.
-- Users need API key storage, model discovery, context metadata, image support, retries, and tool-calling translation to happen automatically.
+Select Ollama Bridge models directly from the VS Code chat model picker:
 
-Ollama Copilot Bridge was created to make that workflow simple: install the extension, set your Ollama API key, select an Ollama Bridge model in Copilot Chat, and start using Ollama models inside the normal VS Code chat experience.
+![Ollama Bridge models in the VS Code chat model picker](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/model-picker.png)
 
-## What It Does
+Manage your API key, test the connection, and refresh model discovery from the built-in command menu:
 
-- Registers **Ollama Bridge** as a model provider in VS Code.
-- Lists Ollama Cloud or Ollama-compatible models in the Copilot Chat model picker.
-- Stores your Ollama API key securely with VS Code SecretStorage.
-- Streams model responses into VS Code Chat.
-- Fetches model metadata such as context size, capabilities, and request multiplier when available.
+![Ollama Copilot Bridge command menu](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/command-menu.png)
+
+Review discovered model metadata, including context size and tool or vision capabilities, in VS Code's Language Models view:
+
+![Ollama Bridge models in the VS Code Language Models view](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/language-models.jpg)
+
+## Highlights
+
+- Adds **Ollama Bridge** models to the VS Code chat model picker.
+- Works with Ollama Cloud by default at `https://ollama.com/v1`.
+- Can connect to local Ollama or another compatible endpoint.
+- Stores your API key with VS Code SecretStorage.
+- Streams chat responses directly into VS Code.
+- Discovers model metadata such as context size, output limit, vision support, tool support, and request multiplier when available.
 - Supports Agent mode tool calling for compatible models.
 - Forwards image attachments to vision-capable models.
-- Shows a last-request context usage estimate in the status bar hover.
-- Retries temporary Ollama Cloud errors such as `429`, `503`, and `504`.
+- Shows an estimated last-request context usage summary in the status bar hover.
+- Retries temporary provider errors such as `429`, `503`, and `504`.
+
+## Requirements
+
+- VS Code `1.104.0` or newer.
+- VS Code chat access with contributed language model providers enabled.
+- An Ollama Cloud API key, a local Ollama server, or another Ollama/OpenAI-compatible endpoint.
 
 ## Quick Start
 
-1. Install the extension.
+1. Install **Ollama Copilot Bridge**.
 2. Open the Command Palette.
-3. Run:
-
-```txt
-Ollama Copilot: Set API Key
-```
-
+3. Run `Ollama Copilot: Set API Key`.
 4. Paste your Ollama Cloud API key.
-5. Run:
+5. Run `Ollama Copilot: Test Connection`.
+6. Open VS Code chat and select an **Ollama Bridge** model from the model picker.
 
-```txt
-Ollama Copilot: Test Connection
-```
+![Selecting an Ollama Bridge model in VS Code chat](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/model-picker.png)
 
-6. Open Copilot Chat and select an **Ollama Bridge** model from the model picker.
-
-By default, the extension connects to Ollama Cloud:
+By default, the extension connects to:
 
 ```txt
 https://ollama.com/v1
 ```
 
-You can also point it to local Ollama or another compatible endpoint.
-
 ## Commands
 
-- `Ollama Copilot: Manage` opens the extension action menu.
-- `Ollama Copilot: Set API Key` saves or replaces your Ollama API key.
-- `Ollama Copilot: Clear API Key` removes the saved API key.
-- `Ollama Copilot: Refresh Models` reloads model picker entries.
-- `Ollama Copilot: Test Connection` checks API access and model discovery.
+| Command | What it does |
+| --- | --- |
+| `Ollama Copilot: Manage` | Opens the extension action menu. |
+| `Ollama Copilot: Set API Key` | Saves or replaces your API key. |
+| `Ollama Copilot: Clear API Key` | Removes the saved API key. |
+| `Ollama Copilot: Refresh Models` | Reloads model picker entries. |
+| `Ollama Copilot: Test Connection` | Checks API access and model discovery. |
 
-## Main Features
+![Ollama Copilot Bridge command menu](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/command-menu.png)
 
-### Model Discovery
+## Ollama Cloud
+
+The default configuration is ready for Ollama Cloud:
+
+```json
+{
+  "ollamaCopilot.baseUrl": "https://ollama.com",
+  "ollamaCopilot.openaiCompatiblePath": "/v1"
+}
+```
+
+After setting your API key, run `Ollama Copilot: Test Connection` to confirm that the extension can reach your account and discover models.
+
+## Local Ollama
+
+To use a local Ollama server:
+
+```json
+{
+  "ollamaCopilot.baseUrl": "http://localhost:11434",
+  "ollamaCopilot.openaiCompatiblePath": "/v1"
+}
+```
+
+Then run `Ollama Copilot: Refresh Models`.
+
+## Model Discovery
 
 The bridge discovers models through Ollama's OpenAI-compatible `/models` endpoint and falls back to native Ollama endpoints when needed.
 
-Each discovered model is registered with VS Code using:
+Each discovered model can be registered with:
 
-- model ID
-- display name
-- family
+- model ID and display name
+- model family
 - context window
 - output token limit
-- image support
-- tool-calling support
-- request multiplier
+- image capability
+- tool-calling capability
+- request multiplier metadata
 
-### Secure API Key Storage
+If discovery fails, the extension can still fall back to `ollamaCopilot.defaultModel`.
 
-Your API key is stored with VS Code SecretStorage. It is not written to the workspace, `settings.json`, or the extension files.
+![Discovered Ollama Bridge models with context and capabilities](https://raw.githubusercontent.com/Noizboy/ollama-copilot-bridge/main/assets/language-models.jpg)
 
-### Context Usage Hover
+## Vision Models
 
-After a chat request, hover the **Ollama Bridge** status bar button to see an estimate of:
+The bridge forwards VS Code image attachments to Ollama-compatible chat requests when the selected model supports vision.
+
+Vision is enabled when:
+
+- Ollama metadata reports a `vision` capability.
+- The model appears to be from a known multimodal family such as `kimi-k2.6`, `llava`, `pixtral`, `gemma3`, `qwen-vl`, `qwen2-vl`, `qwen2.5-vl`, `minicpm-v`, or `moondream`.
+- You manually mark a model as image-capable with `ollamaCopilot.visionModels`.
+
+Manual vision configuration accepts exact model IDs and `*` wildcards:
+
+```json
+{
+  "ollamaCopilot.visionModels": [
+    "kimi-k2.6*",
+    "qwen2.5-vl:*",
+    "my-vision-model:*"
+  ]
+}
+```
+
+After changing this setting, run `Ollama Copilot: Refresh Models`.
+
+If a text-only model receives an image request, the bridge returns a clear error instead of silently dropping the attachment.
+
+## Agent Mode And Tools
+
+For compatible models, Ollama Copilot Bridge translates VS Code Agent mode tools into OpenAI-compatible tool definitions.
+
+The model can request tools, but VS Code remains in control of tool execution, permission prompts, and returned tool results. The bridge converts streamed `tool_calls` back into VS Code language model tool call parts, then sends tool results back to the Ollama-compatible endpoint.
+
+## Context Usage Hover
+
+After a chat request, hover the **Ollama Bridge** status bar item to see an estimate of:
 
 - input context used
 - model context window
@@ -93,37 +155,24 @@ After a chat request, hover the **Ollama Bridge** status bar button to see an es
 - max output tokens
 - request multiplier
 
-This is a bridge-owned estimate. The internal Copilot context indicator is controlled by VS Code and GitHub Copilot.
-
-### Image Input
-
-The bridge forwards VS Code image attachments to Ollama's OpenAI-compatible chat endpoint for vision-capable models.
-
-Image support is enabled when:
-
-- Ollama metadata reports the `vision` capability.
-- The model is a known multimodal family such as `kimi-k2.6`, `llava`, `pixtral`, `gemma3`, `qwen-vl`, `qwen2-vl`, `qwen2.5-vl`, `minicpm-v`, or `moondream`.
-- You manually mark the model as image-capable with `ollamaCopilot.visionModels`.
-
-If a text-only model receives an image request, the bridge rejects the request with a clear error instead of silently dropping the image.
-
-### Agent Mode And Tool Calling
-
-For compatible models, the bridge translates VS Code tools into OpenAI-compatible tool definitions.
-
-The flow is:
-
-1. VS Code sends available Agent mode tools to the selected Ollama Bridge model.
-2. The bridge forwards those tool definitions to Ollama.
-3. Streamed `tool_calls` are converted back into VS Code `LanguageModelToolCallPart` responses.
-4. VS Code decides whether the tool can run, asks for confirmation when needed, executes it, and returns the result.
-5. The bridge sends tool results back to Ollama as OpenAI-compatible `tool` messages.
-
-Tool execution is still controlled by VS Code and GitHub Copilot. The model requests tools; VS Code runs them.
+This is a bridge-owned estimate. VS Code and GitHub Copilot control their own internal context indicator.
 
 ## Settings
 
-Example configuration:
+| Setting | Default | Description |
+| --- | --- | --- |
+| `ollamaCopilot.enabled` | `true` | Enables or disables the provider. |
+| `ollamaCopilot.baseUrl` | `https://ollama.com` | Ollama Cloud, local Ollama, or another compatible base URL. |
+| `ollamaCopilot.openaiCompatiblePath` | `/v1` | OpenAI-compatible API path. |
+| `ollamaCopilot.defaultModel` | `gpt-oss:20b` | Fallback model when discovery fails. |
+| `ollamaCopilot.visionModels` | `["kimi-k2.6*"]` | Model IDs or wildcard patterns treated as image-capable. |
+| `ollamaCopilot.maxInputTokens` | `8192` | Fallback input context when metadata is unavailable. |
+| `ollamaCopilot.maxOutputTokens` | `2048` | Fallback output token limit when metadata is unavailable. |
+| `ollamaCopilot.requestTimeoutMs` | `120000` | Request timeout in milliseconds. |
+| `ollamaCopilot.retryMaxAttempts` | `4` | Retry attempts for temporary provider failures. |
+| `ollamaCopilot.retryBaseDelayMs` | `1500` | Base delay for retry backoff. |
+
+Example:
 
 ```json
 {
@@ -140,64 +189,39 @@ Example configuration:
 }
 ```
 
-### Important Options
+## Troubleshooting
 
-- `ollamaCopilot.enabled`: enables or disables the provider.
-- `ollamaCopilot.baseUrl`: Ollama Cloud, local Ollama, or another compatible base URL.
-- `ollamaCopilot.openaiCompatiblePath`: OpenAI-compatible API path, usually `/v1`.
-- `ollamaCopilot.defaultModel`: fallback model when discovery fails.
-- `ollamaCopilot.visionModels`: model IDs or wildcard patterns that should be treated as image-capable.
-- `ollamaCopilot.maxInputTokens`: fallback input context when metadata is unavailable.
-- `ollamaCopilot.maxOutputTokens`: fallback output limit when metadata is unavailable.
-- `ollamaCopilot.requestTimeoutMs`: request timeout.
-- `ollamaCopilot.retryMaxAttempts`: retry attempts for temporary failures.
-- `ollamaCopilot.retryBaseDelayMs`: base delay for retry backoff.
+### No Models Appear
 
-### Marking Vision Models Manually
+Run `Ollama Copilot: Test Connection`, verify your API key, and confirm that `ollamaCopilot.baseUrl` plus `ollamaCopilot.openaiCompatiblePath` points to a reachable endpoint.
 
-Some models can process images even when provider metadata does not include `vision`. Use exact IDs or `*` wildcards:
+### Images Do Not Work
 
-```json
-{
-  "ollamaCopilot.visionModels": [
-    "kimi-k2.6*",
-    "my-vision-model:*",
-    "qwen2.5-vl:*"
-  ]
-}
-```
+Use a vision-capable model or add the model ID to `ollamaCopilot.visionModels`, then refresh models.
 
-After changing this setting, run:
+### Agent Tools Do Not Run
 
-```txt
-Ollama Copilot: Refresh Models
-```
+Use VS Code Agent mode and a model that can produce compatible tool calls. Tool execution is controlled by VS Code, so permission prompts and execution behavior come from the editor.
 
-## Local Ollama
+### Requests Timeout
 
-To use a local Ollama server instead of Ollama Cloud:
+Increase `ollamaCopilot.requestTimeoutMs` or reduce the request size. Temporary cloud errors are retried automatically according to the retry settings.
 
-```json
-{
-  "ollamaCopilot.baseUrl": "http://localhost:11434",
-  "ollamaCopilot.openaiCompatiblePath": "/v1"
-}
-```
+## Privacy And Security
 
-Then run:
-
-```txt
-Ollama Copilot: Refresh Models
-```
+- API keys are stored with VS Code SecretStorage.
+- API keys are not written to the workspace, `settings.json`, or extension files.
+- Prompts, images, and tool results are sent to the endpoint you configure.
+- Local Ollama keeps requests on your configured local server; Ollama Cloud sends requests to Ollama's hosted service.
 
 ## Known Limits
 
-- The extension does not replace GitHub Copilot inline completions.
-- The extension does not patch Copilot's closed internal UI.
-- The Copilot model picker and context indicator are controlled by VS Code and GitHub Copilot.
-- Exact token counting depends on each model tokenizer; the status bar context usage is an estimate.
-- Image support depends on both VS Code passing the attachment and the selected Ollama model actually supporting vision.
-- Agent mode quality depends on the selected model's ability to call tools correctly.
+- This extension does not replace GitHub Copilot inline completions.
+- This extension does not modify closed internal Copilot UI.
+- The model picker and internal context indicator are controlled by VS Code and GitHub Copilot.
+- Exact token counting depends on each model tokenizer, so context usage is an estimate.
+- Image support depends on VS Code passing the attachment and the selected model actually supporting vision.
+- Agent mode quality depends on the selected model's tool-calling behavior.
 
 ## Development
 
@@ -213,8 +237,12 @@ To debug locally, press `F5` in VS Code and run the extension in an Extension De
 
 ## Support
 
-Report issues or feature requests here:
+Report issues or feature requests:
 
 ```txt
 https://github.com/Noizboy/ollama-copilot-bridge/issues
 ```
+
+## License
+
+MIT

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.8
+
+- Added Marketplace README screenshots for the model picker, command menu, and Language Models view.
+- Updated the extension description to mention local Ollama, model discovery, tools, and vision support.
+
+## 0.0.7
+
+- Refreshed the Marketplace README with clearer setup, configuration, troubleshooting, and privacy guidance.
+
 ## 0.0.6
 
 - Added `ollamaCopilot.visionModels` for manually marking model IDs or wildcard patterns as image-capable.

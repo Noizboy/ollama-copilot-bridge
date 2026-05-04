@@ -1,8 +1,8 @@
 {
   "name": "ollama-copilot-bridge",
   "displayName": "Ollama Copilot Bridge",
-  "description": "Use Ollama Cloud models in VS Code chat through a VS Code language model provider.",
-  "version": "0.0.6",
+  "description": "Use Ollama Cloud, local Ollama, or compatible models in VS Code chat with model discovery, tools, and vision support.",
+  "version": "0.0.8",
   "publisher": "AlejandroG",
   "license": "MIT",
   "icon": "assets/icon.png",
