@@ -62,10 +62,11 @@ export class OllamaLanguageModelProvider implements vscode.LanguageModelChatProv
       }
 
       if (config.defaultModel) {
+        const prefix = config.connectionMode === "cloud" ? "Cloud:" : "VPS:";
         return [
           toChatInfo({
             id: config.defaultModel,
-            name: config.defaultModel,
+            name: `${prefix}${config.defaultModel}`,
             family: inferFamily(config.defaultModel),
             version: "local",
             maxInputTokens: config.maxInputTokens,

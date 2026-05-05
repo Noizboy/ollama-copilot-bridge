@@ -1,8 +1,8 @@
 {
   "name": "ollama-copilot-bridge",
   "displayName": "Ollama Copilot Bridge",
-  "description": "Use Ollama Cloud, local Ollama, or compatible models in GitHub Copilot Chat in VS Code.",
-  "version": "0.0.12",
+  "description": "Use Ollama API plus one localhost or VPS Ollama URL in GitHub Copilot Chat in VS Code.",
+  "version": "0.0.18",
   "publisher": "AlejandroG",
   "license": "MIT",
   "icon": "assets/icon.png",
@@ -60,7 +60,7 @@
       },
       {
         "command": "ollamaCopilot.setApiKey",
-        "title": "Ollama Copilot: Set API Key / Configure Connection"
+        "title": "Ollama Copilot: Connect Ollama API"
       },
       {
         "command": "ollamaCopilot.testConnection",
@@ -68,7 +68,7 @@
       },
       {
         "command": "ollamaCopilot.clearApiKey",
-        "title": "Ollama Copilot: Clear API Key"
+        "title": "Ollama Copilot: Disconnect Connection"
       },
       {
         "command": "ollamaCopilot.refreshModels",
@@ -96,7 +96,7 @@
             "custom"
           ],
           "default": "cloud",
-          "description": "Connection profile used by the bridge."
+          "description": "Primary connection profile used by the bridge."
         },
         "ollamaCopilot.connections": {
           "type": "array",
@@ -146,7 +146,7 @@
               }
             }
           },
-          "description": "Multiple Ollama Cloud, local, remote, or custom OpenAI-compatible connections shown together in the model picker."
+          "description": "Up to two supported connections: one Ollama API key connection and one localhost/VPS URL connection."
         },
         "ollamaCopilot.baseUrl": {
           "type": "string",
@@ -242,7 +242,7 @@
     "compile": "npm run clean && tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js out-test/test/openAiStream.test.js out-test/test/contextUsage.test.js",
+    "test": "npm run clean && tsc -p tsconfig.test.json && node --test out-test/test/modelMetadata.test.js out-test/test/openAiStream.test.js out-test/test/contextUsage.test.js out-test/test/connectionSlots.test.js",
     "package": "npm run compile && vsce package"
   },
   "devDependencies": {

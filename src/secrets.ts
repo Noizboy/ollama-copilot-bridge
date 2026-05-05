@@ -8,10 +8,10 @@ export class SecretStore implements SecretProvider {
 
   public async getApiKey(connectionId?: string): Promise<string | undefined> {
     if (!connectionId || connectionId === "primary" || connectionId === "cloud") {
-      return this.secrets.get(apiKeySecret);
+      return (await this.secrets.get(connectionSecretKey("cloud"))) ?? this.secrets.get(apiKeySecret);
     }
 
-    return (await this.secrets.get(connectionSecretKey(connectionId))) ?? this.secrets.get(apiKeySecret);
+    return this.secrets.get(connectionSecretKey(connectionId));
   }
 
   public async setApiKey(value: string, connectionId?: string): Promise<void> {
@@ -25,8 +25,17 @@ export class SecretStore implements SecretProvider {
     await this.secrets.store(connectionId ? connectionSecretKey(connectionId) : apiKeySecret, trimmed);
   }
 
-  public clearApiKey(connectionId?: string): Thenable<void> {
-    return this.secrets.delete(connectionId ? connectionSecretKey(connectionId) : apiKeySecret);
+  public async clearApiKey(connectionId?: string): Promise<void> {
+    if (connectionId) {
+      await this.secrets.delete(connectionSecretKey(connectionId));
+      if (connectionId === "cloud") {
+        await this.secrets.delete(apiKeySecret);
+      }
+      return;
+    }
+
+    await this.secrets.delete(apiKeySecret);
+    await this.secrets.delete(connectionSecretKey("cloud"));
   }
 }
 

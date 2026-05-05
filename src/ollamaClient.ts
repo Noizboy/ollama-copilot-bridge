@@ -549,12 +549,15 @@ function createConnectionModel(model: OllamaModel, connection: BridgeConnectionC
 }
 
 function finalizeConnectionModels(models: OllamaModel[], connection: BridgeConnectionConfig): OllamaModel[] {
+  const prefix = connection.type === "cloud" ? "Cloud:" : "VPS:";
+
   return models.map((model) => {
     const providerModelId = model.providerModelId ?? model.id;
 
     return {
       ...model,
       id: connection.primary ? providerModelId : `${connection.id}${routeSeparator}${providerModelId}`,
+      name: `${prefix}${model.name}`,
       providerModelId,
       connectionId: connection.id,
       connectionLabel: connection.label,

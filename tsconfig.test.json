@@ -6,6 +6,7 @@
   },
   "include": [
     "src/modelMetadata.ts",
+    "src/connectionSlots.ts",
     "src/contextUsage.ts",
     "src/openAiStream.ts",
     "src/types.ts",
