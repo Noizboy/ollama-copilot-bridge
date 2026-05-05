@@ -58,10 +58,28 @@ export interface OllamaModel {
   supportsImages: boolean;
   detail?: string;
   tooltip?: string;
+  providerModelId?: string;
+  connectionId?: string;
+  connectionLabel?: string;
+}
+
+export type ConnectionMode = "cloud" | "local" | "remote" | "custom";
+
+export interface BridgeConnectionConfig {
+  id: string;
+  label: string;
+  type: ConnectionMode;
+  enabled: boolean;
+  primary: boolean;
+  baseUrl: string;
+  openaiCompatiblePath: string;
+  openaiBaseUrl: string;
+  requiresApiKey: boolean;
 }
 
 export interface BridgeConfig {
   enabled: boolean;
+  connectionMode: ConnectionMode;
   baseUrl: string;
   openaiCompatiblePath: string;
   openaiBaseUrl: string;
@@ -72,8 +90,13 @@ export interface BridgeConfig {
   retryMaxAttempts: number;
   retryBaseDelayMs: number;
   visionModels: string[];
+  pinnedModels: string[];
+  hiddenModels: string[];
+  modelCacheTtlMs: number;
+  metadataConcurrency: number;
+  connections: BridgeConnectionConfig[];
 }
 
 export interface SecretProvider {
-  getApiKey(): Thenable<string | undefined>;
+  getApiKey(connectionId?: string): Thenable<string | undefined>;
 }

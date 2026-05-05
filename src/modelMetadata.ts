@@ -176,6 +176,10 @@ export function inferVisionSupport(id: string, family?: string): boolean {
 }
 
 export function matchesConfiguredVisionModel(id: string, patterns: readonly string[]): boolean {
+  return matchesModelPattern(id, patterns);
+}
+
+export function matchesModelPattern(id: string, patterns: readonly string[]): boolean {
   const normalizedId = id.toLowerCase();
 
   return patterns.some((pattern) => {
@@ -191,6 +195,10 @@ export function matchesConfiguredVisionModel(id: string, patterns: readonly stri
 
     return wildcardToRegExp(normalizedPattern).test(normalizedId);
   });
+}
+
+export function firstMatchingPatternIndex(id: string, patterns: readonly string[]): number {
+  return patterns.findIndex((pattern) => matchesModelPattern(id, [pattern]));
 }
 
 function wildcardToRegExp(pattern: string): RegExp {

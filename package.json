@@ -1,8 +1,8 @@
 {
   "name": "ollama-copilot-bridge",
   "displayName": "Ollama Copilot Bridge",
-  "description": "Use Ollama Cloud, local Ollama, or compatible models in VS Code chat with model discovery, tools, and vision support.",
-  "version": "0.0.8",
+  "description": "Use Ollama Cloud, local Ollama, or compatible models in GitHub Copilot Chat in VS Code.",
+  "version": "0.0.12",
   "publisher": "AlejandroG",
   "license": "MIT",
   "icon": "assets/icon.png",
@@ -41,7 +41,8 @@
     "onCommand:ollamaCopilot.setApiKey",
     "onCommand:ollamaCopilot.testConnection",
     "onCommand:ollamaCopilot.clearApiKey",
-    "onCommand:ollamaCopilot.refreshModels"
+    "onCommand:ollamaCopilot.refreshModels",
+    "onCommand:ollamaCopilot.diagnostics"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -59,7 +60,7 @@
       },
       {
         "command": "ollamaCopilot.setApiKey",
-        "title": "Ollama Copilot: Set API Key"
+        "title": "Ollama Copilot: Set API Key / Configure Connection"
       },
       {
         "command": "ollamaCopilot.testConnection",
@@ -72,6 +73,10 @@
       {
         "command": "ollamaCopilot.refreshModels",
         "title": "Ollama Copilot: Refresh Models"
+      },
+      {
+        "command": "ollamaCopilot.diagnostics",
+        "title": "Ollama Copilot: Diagnostics"
       }
     ],
     "configuration": {
@@ -81,6 +86,67 @@
           "type": "boolean",
           "default": true,
           "description": "Enable the Ollama language model provider."
+        },
+        "ollamaCopilot.connectionMode": {
+          "type": "string",
+          "enum": [
+            "cloud",
+            "local",
+            "remote",
+            "custom"
+          ],
+          "default": "cloud",
+          "description": "Connection profile used by the bridge."
+        },
+        "ollamaCopilot.connections": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "type",
+              "baseUrl"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "cloud",
+                  "local",
+                  "remote",
+                  "custom"
+                ]
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              },
+              "primary": {
+                "type": "boolean",
+                "default": false
+              },
+              "baseUrl": {
+                "type": "string"
+              },
+              "openaiCompatiblePath": {
+                "type": "string",
+                "default": "/v1"
+              },
+              "requiresApiKey": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "description": "Multiple Ollama Cloud, local, remote, or custom OpenAI-compatible connections shown together in the model picker."
         },
         "ollamaCopilot.baseUrl": {
           "type": "string",
@@ -138,6 +204,35 @@
             "type": "string"
           },
           "description": "Model IDs or wildcard patterns that should be advertised to VS Code as image-capable when provider metadata omits vision support."
+        },
+        "ollamaCopilot.pinnedModels": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Model IDs or wildcard patterns that should appear first in the model picker."
+        },
+        "ollamaCopilot.hiddenModels": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Model IDs or wildcard patterns that should be hidden from the model picker."
+        },
+        "ollamaCopilot.modelCacheTtlMs": {
+          "type": "number",
+          "default": 3600000,
+          "minimum": 0,
+          "description": "How long discovered model metadata is reused before a network refresh is required."
+        },
+        "ollamaCopilot.metadataConcurrency": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of concurrent metadata requests used while enriching discovered models."
         }
       }
     }

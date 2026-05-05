@@ -10,3 +10,4 @@ node_modules/**
 *.vsix
 assets/icon-source-*.png
 ORCHESTRATOR_PLAN.md
+connect_vps_windows.bat

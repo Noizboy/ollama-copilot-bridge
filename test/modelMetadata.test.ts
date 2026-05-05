@@ -15,6 +15,7 @@ import type { BridgeConfig } from "../src/types";
 
 const config: BridgeConfig = {
   enabled: true,
+  connectionMode: "cloud",
   baseUrl: "https://ollama.com",
   openaiCompatiblePath: "/v1",
   openaiBaseUrl: "https://ollama.com/v1",
@@ -24,7 +25,12 @@ const config: BridgeConfig = {
   requestTimeoutMs: 120000,
   retryMaxAttempts: 4,
   retryBaseDelayMs: 1500,
-  visionModels: ["custom-vision:*"]
+  visionModels: ["custom-vision:*"],
+  pinnedModels: [],
+  hiddenModels: [],
+  modelCacheTtlMs: 3600000,
+  metadataConcurrency: 6,
+  connections: []
 };
 
 describe("model metadata helpers", () => {

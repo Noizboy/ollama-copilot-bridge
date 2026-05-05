@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.12
+
+- Updated Marketplace documentation and package description to state that the extension is specifically for GitHub Copilot Chat in VS Code.
+
+## 0.0.11
+
+- Added multi-connection model discovery for Cloud, Local, VPS, and custom endpoints at the same time.
+- Preserved primary connection model IDs for compatibility with existing agents.
+- Added source labels so secondary models show their Cloud, Local, VPS, or custom origin in the picker.
+- Added per-connection API key storage.
+
+## 0.0.10
+
+- Added a unified connection setup flow through `Ollama Copilot: Set API Key / Configure Connection`.
+- Added support for Cloud, local Ollama, remote Ollama, and custom OpenAI-compatible profiles from one wizard.
+- Added URL normalization for pasted Ollama endpoint paths such as `/api/tags`.
+
+## 0.0.9
+
+- Added persistent model metadata caching with configurable TTL.
+- Added concurrent model metadata enrichment for faster model discovery.
+- Added model picker controls for pinned and hidden models.
+- Added diagnostics command with model discovery and chat latency metrics.
+
 ## 0.0.8
 
 - Added Marketplace README screenshots for the model picker, command menu, and Language Models view.

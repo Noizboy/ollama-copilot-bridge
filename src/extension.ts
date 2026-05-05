@@ -5,10 +5,12 @@ import { OllamaClient } from "./ollamaClient";
 import { OllamaLanguageModelProvider } from "./provider";
 import { SecretStore } from "./secrets";
 
+const configSection = "ollamaCopilot";
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Ollama Copilot Bridge");
   const secrets = new SecretStore(context.secrets);
-  const client = new OllamaClient(secrets);
+  const client = new OllamaClient(secrets, context.globalState);
   const provider = new OllamaLanguageModelProvider(client, output);
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 72);
 
@@ -24,11 +26,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       dispose: () => provider.refresh()
     },
     vscode.lm.registerLanguageModelChatProvider("ollama-bridge", provider),
-    vscode.commands.registerCommand("ollamaCopilot.manage", () => manageBridge(client, secrets, provider)),
-    vscode.commands.registerCommand("ollamaCopilot.setApiKey", () => setApiKey(secrets)),
+    vscode.commands.registerCommand("ollamaCopilot.manage", () => manageBridge(client, secrets, provider, output)),
+    vscode.commands.registerCommand("ollamaCopilot.setApiKey", () => configureConnection(client, secrets, provider)),
     vscode.commands.registerCommand("ollamaCopilot.clearApiKey", () => clearApiKey(secrets)),
     vscode.commands.registerCommand("ollamaCopilot.refreshModels", () => refreshModels(client, provider)),
     vscode.commands.registerCommand("ollamaCopilot.testConnection", () => testConnection(client)),
+    vscode.commands.registerCommand("ollamaCopilot.diagnostics", () => showDiagnostics(client, output)),
     provider.onDidUpdateContextUsage((snapshot) => {
       status.tooltip = buildContextStatusTooltip(snapshot);
     }),
@@ -47,14 +50,15 @@ export function deactivate(): void {}
 async function manageBridge(
   client: OllamaClient,
   secrets: SecretStore,
-  provider: OllamaLanguageModelProvider
+  provider: OllamaLanguageModelProvider,
+  output: vscode.OutputChannel
 ): Promise<void> {
   const config = getBridgeConfig();
   const selected = await vscode.window.showQuickPick(
     [
       {
-        label: "$(key) Set API Key",
-        detail: "Stored securely with VS Code SecretStorage",
+        label: "$(settings-gear) Set API Key / Configure Connection",
+        detail: "Configure Cloud, local Ollama, remote Ollama, or a custom endpoint",
         action: "setApiKey"
       },
       {
@@ -71,6 +75,11 @@ async function manageBridge(
         label: "$(refresh) Refresh Models",
         detail: "Reload the model picker entries",
         action: "refresh"
+      },
+      {
+        label: "$(pulse) Diagnostics",
+        detail: "Show connection, model cache, and last chat latency details",
+        action: "diagnostics"
       }
     ],
     {
@@ -88,13 +97,16 @@ async function manageBridge(
       await testConnection(client);
       break;
     case "setApiKey":
-      await setApiKey(secrets);
+      await configureConnection(client, secrets, provider);
       break;
     case "clearApiKey":
       await clearApiKey(secrets);
       break;
     case "refresh":
       await refreshModels(client, provider);
+      break;
+    case "diagnostics":
+      await showDiagnostics(client, output);
       break;
   }
 }
@@ -114,25 +126,224 @@ async function clearApiKey(secrets: SecretStore): Promise<void> {
   void vscode.window.showInformationMessage("Ollama API key cleared.");
 }
 
-async function setApiKey(secrets: SecretStore): Promise<void> {
+async function configureConnection(
+  client: OllamaClient,
+  secrets: SecretStore,
+  provider: OllamaLanguageModelProvider
+): Promise<void> {
+  const selected = await vscode.window.showQuickPick(
+    [
+      {
+        label: "$(cloud) Ollama Cloud",
+        description: "Hosted Ollama API",
+        mode: "cloud" as const
+      },
+      {
+        label: "$(device-desktop) Local Ollama",
+        description: "http://localhost:11434",
+        mode: "local" as const
+      },
+      {
+        label: "$(globe) Remote Ollama / VPS",
+        description: "Self-hosted Ollama behind a domain, IP, tunnel, or reverse proxy",
+        mode: "remote" as const
+      },
+      {
+        label: "$(plug) Custom OpenAI-Compatible",
+        description: "Compatible endpoint with configurable /v1 path",
+        mode: "custom" as const
+      }
+    ],
+    {
+      title: "Ollama Copilot Bridge Connection",
+      placeHolder: "Choose the connection type"
+    }
+  );
+
+  if (!selected) {
+    return;
+  }
+
+  const config = vscode.workspace.getConfiguration(configSection);
+  let baseUrl = selected.mode === "cloud" ? "https://ollama.com" : "http://localhost:11434";
+  let openaiPath = "/v1";
+  let keyMode: "required" | "optional" | "none" = selected.mode === "cloud" ? "required" : "none";
+  let connectionLabel = selected.mode === "cloud" ? "Cloud" : selected.mode === "local" ? "Local" : "VPS";
+  let connectionId = selected.mode === "cloud" ? "cloud" : selected.mode === "local" ? "local" : selected.mode;
+
+  if (selected.mode === "remote" || selected.mode === "custom") {
+    const label = await vscode.window.showInputBox({
+      title: selected.mode === "remote" ? "Remote Connection Name" : "Custom Connection Name",
+      prompt: "This name is shown as the model source in VS Code.",
+      value: selected.mode === "remote" ? "VPS" : "Custom",
+      ignoreFocusOut: true
+    });
+
+    if (label === undefined) {
+      return;
+    }
+
+    connectionLabel = label.trim() || connectionLabel;
+    connectionId = normalizeConnectionId(connectionLabel);
+
+    const value = await vscode.window.showInputBox({
+      title: selected.mode === "remote" ? "Remote Ollama Base URL" : "Custom Base URL",
+      prompt: "Paste the server URL. Full Ollama paths like /api/tags are accepted and normalized.",
+      placeHolder: "https://your-ollama-server.example",
+      value: getBridgeConfig().baseUrl,
+      ignoreFocusOut: true
+    });
+
+    if (value === undefined) {
+      return;
+    }
+
+    baseUrl = normalizeUserBaseUrl(value);
+    keyMode = "optional";
+  }
+
+  if (selected.mode === "custom") {
+    const value = await vscode.window.showInputBox({
+      title: "OpenAI-Compatible Path",
+      prompt: "Use /v1 for Ollama-compatible OpenAI endpoints unless your provider requires another path.",
+      value: getBridgeConfig().openaiCompatiblePath,
+      ignoreFocusOut: true
+    });
+
+    if (value === undefined) {
+      return;
+    }
+
+    openaiPath = normalizeUserPath(value);
+  }
+
+  if (selected.mode === "remote") {
+    const requiresKey = await vscode.window.showQuickPick(
+      [
+        {
+          label: "No API key",
+          description: "Use this when the remote Ollama server is already protected another way",
+          value: false
+        },
+        {
+          label: "Use API key",
+          description: "Send Authorization: Bearer <key> to the remote endpoint",
+          value: true
+        }
+      ],
+      {
+        title: "Remote Authentication",
+        placeHolder: "Does this endpoint require an API key?"
+      }
+    );
+
+    if (!requiresKey) {
+      return;
+    }
+
+    keyMode = requiresKey.value ? "optional" : "none";
+  }
+
+  if (keyMode === "required" || keyMode === "optional") {
+    const storedKey = await promptForApiKey(keyMode);
+
+    if (storedKey === undefined) {
+      return;
+    }
+
+    await secrets.setApiKey(storedKey, connectionId);
+  } else {
+    // Local Ollama does not need bearer auth; clearing avoids accidentally sending a stale key to localhost.
+    await secrets.clearApiKey(connectionId);
+  }
+
+  const current = getBridgeConfig();
+  const updatedConnections = upsertConnection(current.connections, {
+    id: connectionId,
+    label: connectionLabel,
+    type: selected.mode,
+    enabled: true,
+    primary: selected.mode === "cloud" || current.connections.length === 0,
+    baseUrl,
+    openaiCompatiblePath: openaiPath,
+    requiresApiKey: keyMode !== "none"
+  });
+  const primary = updatedConnections.find((connection) => connection.primary) ?? updatedConnections[0];
+
+  await config.update("connections", updatedConnections, vscode.ConfigurationTarget.Global);
+  await config.update("connectionMode", primary.type, vscode.ConfigurationTarget.Global);
+  await config.update("baseUrl", primary.baseUrl, vscode.ConfigurationTarget.Global);
+  await config.update("openaiCompatiblePath", primary.openaiCompatiblePath, vscode.ConfigurationTarget.Global);
+
+  provider.refresh();
+
+  const testNow = await vscode.window.showInformationMessage(
+    `Ollama Bridge configured for ${selected.mode}: ${baseUrl}`,
+    "Test Connection",
+    "Later"
+  );
+
+  if (testNow === "Test Connection") {
+    await testConnection(client);
+  }
+}
+
+function upsertConnection(
+  connections: Array<{
+    id: string;
+    label: string;
+    type: string;
+    enabled: boolean;
+    primary: boolean;
+    baseUrl: string;
+    openaiCompatiblePath: string;
+    requiresApiKey: boolean;
+  }>,
+  connection: {
+    id: string;
+    label: string;
+    type: string;
+    enabled: boolean;
+    primary: boolean;
+    baseUrl: string;
+    openaiCompatiblePath: string;
+    requiresApiKey: boolean;
+  }
+): typeof connections {
+  const existing = connections.filter((candidate) => candidate.id !== connection.id);
+  const hasPrimary = existing.some((candidate) => candidate.primary);
+  const nextConnection = {
+    ...connection,
+    primary: connection.primary || !hasPrimary
+  };
+
+  if (nextConnection.primary) {
+    return [
+      ...existing.map((candidate) => ({ ...candidate, primary: false })),
+      nextConnection
+    ];
+  }
+
+  return [...existing, nextConnection];
+}
+
+async function promptForApiKey(mode: "required" | "optional"): Promise<string | undefined> {
   const value = await vscode.window.showInputBox({
     title: "Ollama API Key",
-    prompt: "Enter your Ollama Cloud API key. Leave empty to clear it.",
+    prompt:
+      mode === "required"
+        ? "Enter your Ollama Cloud API key."
+        : "Enter an API key if this endpoint needs bearer auth. Leave empty to clear it.",
     password: true,
     ignoreFocusOut: true
   });
 
-  if (value === undefined) {
-    return;
-  }
-
-  await secrets.setApiKey(value);
-  void vscode.window.showInformationMessage(value.trim() ? "Ollama API key saved." : "Ollama API key cleared.");
+  return value;
 }
 
 async function refreshModels(client: OllamaClient, provider: OllamaLanguageModelProvider): Promise<void> {
   provider.refresh();
-  const models = await client.listModels();
+  const models = await client.listModels({ forceRefresh: true });
   provider.refresh();
   void vscode.window.showInformationMessage(`Ollama models refreshed: ${models.length} found.`);
 }
@@ -140,7 +351,7 @@ async function refreshModels(client: OllamaClient, provider: OllamaLanguageModel
 async function testConnection(client: OllamaClient): Promise<void> {
   try {
     await warnIfCloudKeyIsMissing(client);
-    const models = await client.listModels();
+    const models = await client.listModels({ forceRefresh: true });
     const suffix = models.length === 1 ? "model" : "models";
     void vscode.window.showInformationMessage(`Connected to Ollama: ${models.length} ${suffix} found.`);
   } catch (error) {
@@ -148,9 +359,49 @@ async function testConnection(client: OllamaClient): Promise<void> {
   }
 }
 
+async function showDiagnostics(client: OllamaClient, output: vscode.OutputChannel): Promise<void> {
+  const config = getBridgeConfig();
+  const diagnostics = client.getDiagnostics();
+  const hasApiKey = await client.hasApiKey();
+
+  output.appendLine("");
+  output.appendLine("Ollama Copilot Bridge Diagnostics");
+  output.appendLine(`Time: ${new Date().toISOString()}`);
+  output.appendLine(`Enabled: ${config.enabled}`);
+  output.appendLine(`Connection mode: ${config.connectionMode}`);
+  output.appendLine(`Base URL: ${config.baseUrl}`);
+  output.appendLine(`OpenAI path: ${config.openaiCompatiblePath}`);
+  output.appendLine(`API key: ${hasApiKey ? "set" : "missing"}`);
+  output.appendLine(`Cache TTL: ${config.modelCacheTtlMs}ms`);
+  output.appendLine(`Metadata concurrency: ${config.metadataConcurrency}`);
+  output.appendLine(`Pinned models: ${config.pinnedModels.join(", ") || "-"}`);
+  output.appendLine(`Hidden models: ${config.hiddenModels.join(", ") || "-"}`);
+  output.appendLine(`Vision models: ${config.visionModels.join(", ") || "-"}`);
+  output.appendLine("Connections:");
+  for (const connection of config.connections) {
+    output.appendLine(
+      `- ${connection.label} (${connection.id}) type=${connection.type} primary=${connection.primary} enabled=${connection.enabled} baseUrl=${connection.baseUrl} apiKey=${connection.requiresApiKey ? "required/optional" : "not required"}`
+    );
+  }
+  output.appendLine(`Last model source: ${diagnostics.lastModelSource ?? "-"}`);
+  output.appendLine(`Last model count: ${diagnostics.lastModelCount ?? "-"}`);
+  output.appendLine(`Last model discovery: ${formatMs(diagnostics.lastModelDiscoveryMs)}`);
+  output.appendLine(`Last metadata enrich: ${formatMs(diagnostics.lastMetadataMs)}`);
+  output.appendLine(`Last metadata successes: ${diagnostics.lastMetadataSuccesses ?? "-"}`);
+  output.appendLine(`Last metadata failures: ${diagnostics.lastMetadataFailures ?? "-"}`);
+  output.appendLine(`Last chat model: ${diagnostics.lastChatModel ?? "-"}`);
+  output.appendLine(`Last chat first token: ${formatMs(diagnostics.lastChatTimeToFirstTokenMs)}`);
+  output.appendLine(`Last chat duration: ${formatMs(diagnostics.lastChatDurationMs)}`);
+  output.appendLine(`Last chat characters: ${diagnostics.lastChatCharacters ?? "-"}`);
+  output.appendLine(`Last chat tool calls: ${diagnostics.lastChatToolCalls ?? "-"}`);
+  output.appendLine(`Last retry count: ${diagnostics.lastRetryCount ?? "-"}`);
+  output.appendLine(`Last error: ${diagnostics.lastError ?? "-"}`);
+  output.show(true);
+}
+
 async function warnIfCloudKeyIsMissing(client: OllamaClient): Promise<void> {
   const config = getBridgeConfig();
-  const isCloud = /^https:\/\/ollama\.com\/?$/i.test(config.baseUrl);
+  const isCloud = config.connectionMode === "cloud" || /^https:\/\/ollama\.com\/?$/i.test(config.baseUrl);
 
   if (isCloud && !(await client.hasApiKey())) {
     void vscode.window.showWarningMessage(
@@ -159,8 +410,39 @@ async function warnIfCloudKeyIsMissing(client: OllamaClient): Promise<void> {
   }
 }
 
+function normalizeUserBaseUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  const knownSuffixes = ["/api/tags", "/api/show", "/api/chat", "/v1/models", "/v1/chat/completions"];
+
+  for (const suffix of knownSuffixes) {
+    if (trimmed.toLowerCase().endsWith(suffix)) {
+      return trimmed.slice(0, -suffix.length).replace(/\/+$/, "");
+    }
+  }
+
+  return trimmed;
+}
+
+function normalizeUserPath(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  return `/${trimmed.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+}
+
+function normalizeConnectionId(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "-") || "connection";
+}
+
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatMs(value: number | undefined): string {
+  return value === undefined ? "-" : `${value}ms`;
 }
 
 function buildIdleStatusTooltip(): vscode.MarkdownString {

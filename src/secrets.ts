@@ -6,22 +6,30 @@ const apiKeySecret = "ollamaCopilot.apiKey";
 export class SecretStore implements SecretProvider {
   public constructor(private readonly secrets: vscode.SecretStorage) {}
 
-  public getApiKey(): Thenable<string | undefined> {
-    return this.secrets.get(apiKeySecret);
+  public async getApiKey(connectionId?: string): Promise<string | undefined> {
+    if (!connectionId || connectionId === "primary" || connectionId === "cloud") {
+      return this.secrets.get(apiKeySecret);
+    }
+
+    return (await this.secrets.get(connectionSecretKey(connectionId))) ?? this.secrets.get(apiKeySecret);
   }
 
-  public async setApiKey(value: string): Promise<void> {
+  public async setApiKey(value: string, connectionId?: string): Promise<void> {
     const trimmed = value.trim();
 
     if (!trimmed) {
-      await this.clearApiKey();
+      await this.clearApiKey(connectionId);
       return;
     }
 
-    await this.secrets.store(apiKeySecret, trimmed);
+    await this.secrets.store(connectionId ? connectionSecretKey(connectionId) : apiKeySecret, trimmed);
   }
 
-  public clearApiKey(): Thenable<void> {
-    return this.secrets.delete(apiKeySecret);
+  public clearApiKey(connectionId?: string): Thenable<void> {
+    return this.secrets.delete(connectionId ? connectionSecretKey(connectionId) : apiKeySecret);
   }
+}
+
+function connectionSecretKey(connectionId: string): string {
+  return `${apiKeySecret}.${connectionId}`;
 }
